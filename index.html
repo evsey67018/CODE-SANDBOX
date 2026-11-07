@@ -315,6 +315,10 @@
     .seg-html { background: var(--orange-500); }
     .seg-css { background: var(--gold); }
     .seg-js { background: var(--success); }
+    .seg-json { background: #c47b7b; }
+    .seg-svg { background: var(--orange-600); }
+    .seg-xml { background: #c9894a; }
+    .seg-md { background: var(--orange-300); }
     .seg-text { background: var(--text-soft); }
 
     /* ----------------------------------------------------------
@@ -699,36 +703,35 @@
     <p class="hints">Горячие клавиши: Ctrl+Enter — запуск, Ctrl+Shift+C — копировать всё, Ctrl+S — скачать, Tab — два пробела, Esc — закрыть полноэкранный режим. На Mac вместо Ctrl используйте Cmd для запуска.</p>
     <main class="workspace">
       <section class="pane editor-pane" aria-label="Редактор">
-        <div class="tabs" id="tabs" role="tablist" aria-label="Языки">
-          <button type="button" class="tab" role="tab" id="tab-html" data-tab="html" aria-controls="editor" aria-selected="true">HTML</button>
-          <button type="button" class="tab" role="tab" id="tab-css" data-tab="css" aria-controls="editor" aria-selected="false" tabindex="-1">CSS</button>
-          <button type="button" class="tab" role="tab" id="tab-js" data-tab="js" aria-controls="editor" aria-selected="false" tabindex="-1">JavaScript</button>
-          <button type="button" class="tab" role="tab" id="tab-json" data-tab="json" aria-controls="editor" aria-selected="false" tabindex="-1">JSON</button>
-          <button type="button" class="tab" role="tab" id="tab-svg" data-tab="svg" aria-controls="editor" aria-selected="false" tabindex="-1">SVG</button>
-          <button type="button" class="tab" role="tab" id="tab-xml" data-tab="xml" aria-controls="editor" aria-selected="false" tabindex="-1">XML</button>
-          <button type="button" class="tab" role="tab" id="tab-md" data-tab="md" aria-controls="editor" aria-selected="false" tabindex="-1">Markdown</button>
-        </div>
         <div class="meta-row">
           <div class="badges" id="badges" aria-label="Доли языков">
             <span class="badge" id="badgeHtml">HTML 0%</span>
             <span class="badge" id="badgeCss">CSS 0%</span>
             <span class="badge" id="badgeJs">JS 0%</span>
+            <span class="badge" id="badgeJson">JSON 0%</span>
+            <span class="badge" id="badgeSvg">SVG 0%</span>
+            <span class="badge" id="badgeXml">XML 0%</span>
+            <span class="badge" id="badgeMd">Markdown 0%</span>
             <span class="badge" id="badgeText">Текст 0%</span>
           </div>
           <div class="share-bar" id="shareBar" aria-hidden="true">
             <span class="seg seg-html" id="segHtml"></span>
             <span class="seg seg-css" id="segCss"></span>
             <span class="seg seg-js" id="segJs"></span>
+            <span class="seg seg-json" id="segJson"></span>
+            <span class="seg seg-svg" id="segSvg"></span>
+            <span class="seg seg-xml" id="segXml"></span>
+            <span class="seg seg-md" id="segMd"></span>
             <span class="seg seg-text" id="segText"></span>
           </div>
         </div>
-        <div class="editor-shell" id="editorShell" role="tabpanel" aria-labelledby="tab-html">
+        <div class="editor-shell" id="editorShell">
           <div class="gutter code-text" id="gutter" aria-hidden="true"></div>
           <div class="editor-body" id="editorBody">
             <div class="editor-sizer" id="editorSizer">
-              <div class="placeholder code-text" id="placeholder">Введите HTML…</div>
+              <div class="placeholder code-text" id="placeholder">Вставьте HTML, CSS, JavaScript, JSON, SVG, XML или Markdown…</div>
               <pre class="code-text" id="highlightLayer"><code class="code-text" id="highlightCode"></code></pre>
-              <textarea class="code-text" id="editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" wrap="soft" aria-multiline="true" aria-label="Редактор: HTML"></textarea>
+              <textarea class="code-text" id="editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" wrap="soft" aria-multiline="true" aria-label="Редактор кода"></textarea>
             </div>
           </div>
         </div>
@@ -781,7 +784,7 @@
 
     /* ----------------------------------------------------------
      * Code Sandbox
-     * One editor, seven languages, sandboxed preview.
+     * One editor for mixed code, sandboxed preview.
      * User code runs only inside iframes with sandbox="allow-scripts".
      * The parent page never evaluates user code.
      * ---------------------------------------------------------- */
@@ -790,8 +793,11 @@
      * 1. Constants
      * ---------------------------------------------------------- */
 
-    /** Ordered editor tabs and state keys. */
+    /** Legacy multi-tab draft and share keys, kept so old links still open. */
     const TABS = ['html', 'css', 'js', 'json', 'svg', 'xml', 'md'];
+
+    /** Languages shown on the share bar, in display order. */
+    const SHARE_KEYS = ['html', 'css', 'js', 'json', 'svg', 'xml', 'md', 'text'];
 
     /** Human labels for tabs. */
     const TAB_LABELS = {
@@ -829,7 +835,7 @@
     /** localStorage key for the autosaved draft. */
     const DRAFT_KEY = 'code_sandbox_draft';
 
-    /** Per-tab size ceiling, in bytes. */
+    /** Editor size ceiling, in bytes. */
     const LIMIT = 100 * 1024;
 
     /** Skip syntax highlighting above this size so typing stays responsive. */
@@ -1127,6 +1133,7 @@
         }
       },
       json: {
+        only: 'json',
         tab: 'json',
         files: {
           html: '<h1>JSON не выполняется</h1><p>Объект ниже только показывается.</p>',
@@ -1135,7 +1142,7 @@
           json: JSON.stringify({
             name: 'Code Sandbox',
             language: 'ru',
-            tabs: ['html', 'css', 'js', 'json', 'svg', 'xml', 'md'],
+            languages: ['html', 'css', 'js', 'json', 'svg', 'xml', 'markdown'],
             limits: { perTabBytes: 102400 },
             safe: true
           }, null, 2),
@@ -1145,6 +1152,7 @@
         }
       },
       svg: {
+        only: 'svg',
         tab: 'svg',
         files: {
           html: '',
@@ -1164,6 +1172,7 @@
         }
       },
       markdown: {
+        only: 'md',
         tab: 'md',
         files: {
           html: '',
@@ -1182,8 +1191,8 @@
             '- Первая мысль',
             '- Вторая мысль',
             '',
-            '1. Откройте вкладку',
-            '2. Запустите предпросмотр',
+            '1. Нажмите «Запустить»',
+            '2. Посмотрите предпросмотр',
             '',
             '[Документация](https://example.com)',
             '',
@@ -1194,6 +1203,18 @@
         }
       }
     };
+
+    /**
+     * Turn an example into one editor snippet.
+     * CSS and JavaScript are wrapped so a mixed page stays in the single field.
+     * @param {{only?:string, files:Record<string, string>}} example
+     * @returns {string}
+     */
+    function snippetOf(example) {
+      const files = example && example.files ? example.files : {};
+      if (example && example.only && typeof files[example.only] === 'string') return files[example.only];
+      return concatenateTabs(files);
+    }
 
     /** Copy for the paste dialog, keyed by analyzer mode. */
     const PASTE_COPY = {
@@ -1284,15 +1305,22 @@
     const badgeHtml = must('badgeHtml');
     const badgeCss = must('badgeCss');
     const badgeJs = must('badgeJs');
+    const badgeJson = must('badgeJson');
+    const badgeSvg = must('badgeSvg');
+    const badgeXml = must('badgeXml');
+    const badgeMd = must('badgeMd');
     const badgeText = must('badgeText');
     const segHtml = must('segHtml');
     const segCss = must('segCss');
     const segJs = must('segJs');
+    const segJson = must('segJson');
+    const segSvg = must('segSvg');
+    const segXml = must('segXml');
+    const segMd = must('segMd');
     const segText = must('segText');
 
-    /** @type {{html:string,css:string,js:string,json:string,svg:string,xml:string,md:string}} */
-    const state = emptyState();
-    let activeTab = 'html';
+    /** Last accepted editor value, used to undo an over-limit edit. */
+    let codeMemory = '';
     let dirty = false;
     let currentRun = 0;
     let currentDoc = '';
@@ -1306,8 +1334,6 @@
     let modalResolver = null;
     /** @type {{text:string,at:number}} */
     let lastToast = { text: '', at: 0 };
-    /** @type {Record<string, number>} */
-    const scrollMemory = { html: 0, css: 0, js: 0, json: 0, svg: 0, xml: 0, md: 0 };
 
     /* ----------------------------------------------------------
      * 4. Small utilities
@@ -1814,33 +1840,118 @@
     }
 
     /**
-     * Character shares for the HTML / CSS / JS / Text badges.
-     * Embedded style and script inside the HTML tab are counted with their language.
-     * @param {Record<string, string>} current
-     * @returns {{html:number,css:number,js:number,text:number}}
+     * What the whole buffer is, when it is one language rather than mixed HTML.
+     * @param {string} code
+     * @returns {string}
      */
-    function languageShares(current) {
-      const embedded = extractEmbedded(current.html);
-      const parts = [
-        embedded.html.length,
-        embedded.css.length + current.css.length,
-        embedded.js.length + current.js.length,
-        current.json.length + current.svg.length + current.xml.length + current.md.length
-      ];
-      const percents = toPercents(parts);
-      return { html: percents[0], css: percents[1], js: percents[2], text: percents[3] };
+    function detectKind(code) {
+      const trimmed = String(code || '').trim();
+      if (!trimmed) return 'empty';
+      if (looksLikeJson(trimmed)) return 'json';
+      if (looksLikeSvg(trimmed)) return 'svg';
+      if (looksLikeXml(trimmed)) return 'xml';
+      if (looksLikeMarkdown(trimmed) && !/<[a-z!/]/i.test(trimmed)) return 'md';
+      if (looksLikeCss(trimmed)) return 'css';
+      if (looksLikeJs(trimmed)) return 'js';
+      if (/<[a-z!/]/i.test(trimmed)) return 'html';
+      return 'text';
     }
 
     /**
-     * First tab that contains non-space text.
-     * @param {Record<string, string>} current
+     * Count HTML, embedded CSS/JS/JSON/SVG and plain text in one mixed document.
+     * Whitespace-only gaps between tags are ignored so indentation does not dominate.
+     * @param {string} code
+     * @param {Record<string, number>} counts
+     * @returns {void}
+     */
+    function countMixedHtml(code, counts) {
+      const pattern = /<style\b[^>]*>[\s\S]*?<\/style>|<script\b[^>]*>[\s\S]*?<\/script>|<svg\b[^>]*>[\s\S]*?<\/svg>|<!--[\s\S]*?-->|<\/?[A-Za-z!][^>]*>|[^<]+/gi;
+      let match;
+      let last = 0;
+      while ((match = pattern.exec(code))) {
+        if (match.index > last) counts.text += match.index - last;
+        const token = match[0];
+        if (/^<style\b/i.test(token)) {
+          const open = (token.match(/^<style\b[^>]*>/i) || [''])[0];
+          counts.html += open.length + '</style>'.length;
+          counts.css += token.length - open.length - '</style>'.length;
+        } else if (/^<script\b/i.test(token)) {
+          const open = (token.match(/^<script\b[^>]*>/i) || [''])[0];
+          const closeLength = ('</' + 'script>').length;
+          const inner = token.slice(open.length, token.length - closeLength);
+          counts.html += open.length + closeLength;
+          if (/type\s*=\s*["']application\/(?:ld\+)?json["']/i.test(open)) counts.json += inner.length;
+          else counts.js += inner.length;
+        } else if (/^<svg\b/i.test(token)) {
+          counts.svg += token.length;
+        } else if (token.startsWith('<')) {
+          counts.html += token.length;
+        } else if (!/^[\s]*$/.test(token)) {
+          counts.text += token.length;
+        }
+        last = match.index + token.length;
+      }
+      if (last < code.length && !/^[\s]*$/.test(code.slice(last))) counts.text += code.length - last;
+    }
+
+    /**
+     * Live language shares for the badges above the editor.
+     * @param {string} code
+     * @returns {Record<string, number>}
+     */
+    function languageShares(code) {
+      const counts = { html: 0, css: 0, js: 0, json: 0, svg: 0, xml: 0, md: 0, text: 0 };
+      const kind = detectKind(code);
+      if (kind === 'json') counts.json = String(code).length;
+      else if (kind === 'svg') counts.svg = String(code).length;
+      else if (kind === 'xml') counts.xml = String(code).length;
+      else if (kind === 'md') counts.md = String(code).length;
+      else if (kind === 'css') counts.css = String(code).length;
+      else if (kind === 'js') counts.js = String(code).length;
+      else if (kind === 'text') counts.text = String(code).length;
+      else if (kind === 'html') countMixedHtml(String(code), counts);
+      const percents = toPercents(SHARE_KEYS.map(function (key) { return counts[key]; }));
+      const shares = {};
+      SHARE_KEYS.forEach(function (key, index) { shares[key] = percents[index]; });
+      return shares;
+    }
+
+    /**
+     * Join an old multi-tab draft or share into one editor string.
+     * @param {Record<string, string>} source
      * @returns {string}
      */
-    function firstFilled(current) {
-      for (let i = 0; i < TABS.length; i += 1) {
-        if (String(current[TABS[i]] || '').trim()) return TABS[i];
-      }
-      return 'html';
+    function concatenateTabs(source) {
+      const files = source || {};
+      const parts = [];
+      if (String(files.html || '').trim()) parts.push(String(files.html).trim());
+      if (String(files.css || '').trim()) parts.push('<style>\n' + String(files.css).trim() + '\n</style>');
+      if (String(files.js || '').trim()) parts.push('<scr' + 'ipt>\n' + String(files.js).trim() + '\n</' + 'script>');
+      if (String(files.json || '').trim()) parts.push(String(files.json).trim());
+      if (String(files.svg || '').trim()) parts.push(String(files.svg).trim());
+      if (String(files.xml || '').trim()) parts.push(String(files.xml).trim());
+      if (String(files.md || '').trim()) parts.push(String(files.md).trim());
+      return parts.join('\n\n');
+    }
+
+    /**
+     * Split one editor buffer into the pieces the preview document needs.
+     * @param {string} code
+     * @returns {{html:string,css:string,js:string,json:string,svg:string,xml:string,md:string,text:string}}
+     */
+    function parseMixed(code) {
+      const blank = { html: '', css: '', js: '', json: '', svg: '', xml: '', md: '', text: '' };
+      const kind = detectKind(code);
+      if (kind === 'json') return Object.assign(blank, { json: code });
+      if (kind === 'svg') return Object.assign(blank, { svg: code });
+      if (kind === 'xml') return Object.assign(blank, { xml: code });
+      if (kind === 'md') return Object.assign(blank, { md: code });
+      if (kind === 'css') return Object.assign(blank, { css: code });
+      if (kind === 'js') return Object.assign(blank, { js: code });
+      if (kind === 'text') return Object.assign(blank, { text: code });
+      if (kind !== 'html') return blank;
+      const extracted = extractEmbedded(code);
+      return Object.assign(blank, { html: extracted.html, css: extracted.css, js: extracted.js });
     }
 
     /* ----------------------------------------------------------
@@ -2449,35 +2560,55 @@
     }
 
     /**
-     * Format one tab.
-     * @param {string} tab
+     * Pretty-print style and script regions, then the surrounding HTML.
      * @param {string} source
      * @returns {string}
      */
-    function formatCode(tab, source) {
-      if (tab === 'html') return formatHtml(source);
-      if (tab === 'css') return formatCss(source);
-      if (tab === 'js') return formatJs(source);
-      if (tab === 'json') return formatJson(source);
-      if (tab === 'svg' || tab === 'xml') return formatHtml(source);
-      if (tab === 'md') return formatMarkdown(source);
+    function formatHtmlEmbedded(source) {
+      const withInners = String(source).replace(/<style\b[^>]*>[\s\S]*?<\/style>|<script\b[^>]*>[\s\S]*?<\/script>/gi, function (block) {
+        if (/^<style\b/i.test(block)) {
+          const open = (block.match(/^<style\b[^>]*>/i) || [''])[0];
+          const inner = block.slice(open.length, block.length - '</style>'.length);
+          return open + '\n' + formatCss(inner).trim() + '\n</style>';
+        }
+        const open = (block.match(/^<script\b[^>]*>/i) || [''])[0];
+        const inner = block.slice(open.length, block.length - ('</' + 'script>').length);
+        let formatted = inner;
+        try { formatted = formatJs(inner); } catch (err) { formatted = inner; }
+        return open + '\n' + String(formatted).trim() + '\n</' + 'script>';
+      });
+      return formatHtml(withInners);
+    }
+
+    /**
+     * Format the single editor buffer according to what it contains.
+     * @param {string} source
+     * @returns {string}
+     */
+    function formatMixed(source) {
+      const kind = detectKind(source);
+      if (kind === 'css') return formatCss(source);
+      if (kind === 'js') return formatJs(source);
+      if (kind === 'json') return formatJson(source);
+      if (kind === 'md') return formatMarkdown(source);
+      if (kind === 'svg' || kind === 'xml') return formatHtml(source);
+      if (kind === 'html') return formatHtmlEmbedded(source);
       return source;
     }
 
     /**
-     * Minify one tab.
-     * @param {string} tab
+     * Minify the single editor buffer according to what it contains.
      * @param {string} source
      * @returns {string}
      */
-    function minifyCode(tab, source) {
-      if (tab === 'html') return minifyHtml(source);
-      if (tab === 'css') return minifyCss(source);
-      if (tab === 'js') return minifyJs(source);
-      if (tab === 'json') return minifyJson(source);
-      if (tab === 'svg' || tab === 'xml') return minifyHtml(source);
-      if (tab === 'md') return minifyMarkdown(source);
-      return source;
+    function minifyMixed(source) {
+      const kind = detectKind(source);
+      if (kind === 'css') return minifyCss(source);
+      if (kind === 'js') return minifyJs(source);
+      if (kind === 'json') return minifyJson(source);
+      if (kind === 'md') return minifyMarkdown(source);
+      if (kind === 'svg' || kind === 'xml' || kind === 'html') return minifyHtml(source);
+      return String(source).trim();
     }
 
     /* ----------------------------------------------------------
@@ -2530,7 +2661,8 @@
      * @param {{withDock?:boolean, runId?:number}} options
      * @returns {string}
      */
-    function assembleDocument(current, options) {
+    function assembleDocument(source, options) {
+      const current = parseMixed(typeof source === 'string' ? source : '');
       const withDock = !!(options && options.withDock);
       const runId = options && options.runId ? options.runId : 0;
       const chunks = [];
@@ -2541,6 +2673,7 @@
       if (markdown) chunks.push('<article class="sandbox-md">\n' + markdown + '\n</article>');
       const jsonBlock = jsonPreviewBlock(current.json || '');
       if (jsonBlock) chunks.push(jsonBlock);
+      if (String(current.text || '').trim()) chunks.push('<pre class="sandbox-json">' + escapeHtml(current.text) + '</pre>');
       const openScript = '<scr' + 'ipt>';
       const closeScript = '</scr' + 'ipt>';
       // Compile inside the iframe only. A syntax error then stays a caught exception
@@ -2582,15 +2715,13 @@
      * ---------------------------------------------------------- */
 
     /**
-     * Highlight source for the active language, or escape it.
+     * Highlight one language, or escape the text when highlight.js is unavailable.
      * @param {string} code
-     * @param {string} tab
+     * @param {string} language
      * @returns {string}
      */
-    function highlightSource(code, tab) {
+    function highlightWithHljs(code, language) {
       if (!code) return '';
-      if (byteLength(code) > HIGHLIGHT_LIMIT) return escapeHtml(code);
-      const language = HLJS_LANG[tab] || 'plaintext';
       try {
         if (window.hljs && typeof window.hljs.highlight === 'function' && window.hljs.getLanguage(language)) {
           return window.hljs.highlight(code, { language: language, ignoreIllegals: true }).value;
@@ -2598,6 +2729,52 @@
       } catch (err) {
         return escapeHtml(code);
       }
+      return escapeHtml(code);
+    }
+
+    /**
+     * Highlight HTML and paint embedded style/script bodies as CSS and JavaScript.
+     * @param {string} code
+     * @returns {string}
+     */
+    function highlightHtmlEmbedded(code) {
+      const pattern = /(<style\b[^>]*>)([\s\S]*?)(<\/style>)|(<script\b[^>]*>)([\s\S]*?)(<\/script>)/gi;
+      let html = '';
+      let last = 0;
+      let match;
+      while ((match = pattern.exec(code))) {
+        html += highlightWithHljs(code.slice(last, match.index), 'xml');
+        if (match[1]) {
+          html += highlightWithHljs(match[1], 'xml');
+          html += highlightWithHljs(match[2], 'css');
+          html += highlightWithHljs(match[3], 'xml');
+        } else {
+          html += highlightWithHljs(match[4], 'xml');
+          const jsonBlock = /type\s*=\s*["']application\/(?:ld\+)?json["']/i.test(match[4]);
+          html += highlightWithHljs(match[5], jsonBlock ? 'json' : 'javascript');
+          html += highlightWithHljs(match[6], 'xml');
+        }
+        last = match.index + match[0].length;
+      }
+      html += highlightWithHljs(code.slice(last), 'xml');
+      return html;
+    }
+
+    /**
+     * Highlight the single buffer: mixed HTML, or the one language it entirely is.
+     * @param {string} code
+     * @returns {string}
+     */
+    function highlightSource(code) {
+      if (!code) return '';
+      if (byteLength(code) > HIGHLIGHT_LIMIT) return escapeHtml(code);
+      const kind = detectKind(code);
+      if (kind === 'json') return highlightWithHljs(code, 'json');
+      if (kind === 'md') return highlightWithHljs(code, 'markdown');
+      if (kind === 'css') return highlightWithHljs(code, 'css');
+      if (kind === 'js') return highlightWithHljs(code, 'javascript');
+      if (kind === 'svg' || kind === 'xml') return highlightWithHljs(code, 'xml');
+      if (kind === 'html') return highlightHtmlEmbedded(code);
       return escapeHtml(code);
     }
 
@@ -2657,7 +2834,7 @@
       painting = true;
       try {
         const code = editor.value;
-        const html = highlightSource(code, activeTab);
+        const html = highlightSource(code);
         highlightCode.innerHTML = html || '&#8203;';
         placeholder.hidden = code.length > 0;
         const nextHeight = Math.max(highlightLayer.offsetHeight, editorBody.clientHeight || 0);
@@ -2685,12 +2862,12 @@
     }
 
     /**
-     * Pull the textarea into state and return a copy.
-     * @returns {{html:string,css:string,js:string,json:string,svg:string,xml:string,md:string}}
+     * Current editor text.
+     * @returns {string}
      */
     function readState() {
-      state[activeTab] = editor.value;
-      return cloneState(state);
+      codeMemory = editor.value;
+      return editor.value;
     }
 
     /**
@@ -2698,81 +2875,43 @@
      * @returns {void}
      */
     function updateStats() {
-      const current = readState();
-      const shares = languageShares(current);
+      const shares = languageShares(editor.value);
       badgeHtml.textContent = 'HTML ' + shares.html + '%';
       badgeCss.textContent = 'CSS ' + shares.css + '%';
       badgeJs.textContent = 'JS ' + shares.js + '%';
+      badgeJson.textContent = 'JSON ' + shares.json + '%';
+      badgeSvg.textContent = 'SVG ' + shares.svg + '%';
+      badgeXml.textContent = 'XML ' + shares.xml + '%';
+      badgeMd.textContent = 'Markdown ' + shares.md + '%';
       badgeText.textContent = 'Текст ' + shares.text + '%';
       segHtml.style.width = shares.html + '%';
       segCss.style.width = shares.css + '%';
       segJs.style.width = shares.js + '%';
+      segJson.style.width = shares.json + '%';
+      segSvg.style.width = shares.svg + '%';
+      segXml.style.width = shares.xml + '%';
+      segMd.style.width = shares.md + '%';
       segText.style.width = shares.text + '%';
-      const here = current[activeTab].length;
-      const total = TABS.reduce(function (sum, key) { return sum + current[key].length; }, 0);
-      charCount.textContent = formatCount(here) + ' в этой вкладке · ' + formatCount(total) + ' всего';
+      charCount.textContent = formatCount(editor.value.length);
     }
 
     /**
-     * Move the visible tab selection.
-     * @returns {void}
-     */
-    function updateTabUI() {
-      TABS.forEach(function (key) {
-        const button = document.getElementById('tab-' + key);
-        const selected = key === activeTab;
-        button.setAttribute('aria-selected', selected ? 'true' : 'false');
-        button.tabIndex = selected ? 0 : -1;
-      });
-    }
-
-    /**
-     * Show another language in the same textarea.
+     * Replace the editor contents.
      * @param {string} next
-     * @param {{force?:boolean, focus?:boolean}} [options]
-     * @returns {void}
-     */
-    function switchTab(next, options) {
-      if (TABS.indexOf(next) === -1) return;
-      const force = options && options.force;
-      if (!force && next === activeTab) {
-        if (options && options.focus) editor.focus();
-        return;
-      }
-      if (!force) state[activeTab] = editor.value;
-      scrollMemory[activeTab] = editorBody.scrollTop;
-      activeTab = next;
-      editor.value = state[activeTab] || '';
-      editor.setAttribute('aria-label', 'Редактор: ' + TAB_LABELS[next]);
-      editorShell.setAttribute('aria-labelledby', 'tab-' + next);
-      placeholder.textContent = PLACEHOLDERS[next];
-      updateTabUI();
-      paintEditorNow();
-      updateStats();
-      editorBody.scrollTop = scrollMemory[next] || 0;
-      if (options && options.focus) editor.focus();
-    }
-
-    /**
-     * Replace every tab and choose which one is visible.
-     * @param {Record<string, string>} next
-     * @param {string} tab
      * @param {{dirty?:boolean, status?:string}} [options]
      * @returns {void}
      */
-    function applyFullState(next, tab, options) {
-      const clean = clampState(cloneState(next));
-      TABS.forEach(function (key) {
-        state[key] = clean[key];
-        scrollMemory[key] = 0;
-      });
-      activeTab = TABS.indexOf(tab) === -1 ? 'html' : tab;
+    function applyCode(next, options) {
+      let value = typeof next === 'string' ? next : '';
+      if (byteLength(value) > LIMIT) {
+        value = clipToBytes(value, LIMIT);
+        toast('Превышен лимит 100 КБ');
+      }
+      codeMemory = value;
       dirty = !!(options && options.dirty);
-      editor.value = state[activeTab];
-      editor.setAttribute('aria-label', 'Редактор: ' + TAB_LABELS[activeTab]);
-      editorShell.setAttribute('aria-labelledby', 'tab-' + activeTab);
-      placeholder.textContent = PLACEHOLDERS[activeTab];
-      updateTabUI();
+      editor.value = value;
+      editor.setAttribute('aria-label', 'Редактор кода');
+      placeholder.textContent = 'Вставьте HTML, CSS, JavaScript, JSON, SVG, XML или Markdown…';
       paintEditorNow();
       updateStats();
       editorBody.scrollTop = 0;
@@ -2802,13 +2941,13 @@
       const end = editor.selectionEnd;
       const next = editor.value.slice(0, start) + text + editor.value.slice(end);
       if (byteLength(next) > LIMIT) {
-        toast('Превышен лимит 100 КБ для этой вкладки');
+        toast('Превышен лимит 100 КБ');
         return false;
       }
       editor.value = next;
       const caret = start + text.length;
       editor.selectionStart = editor.selectionEnd = caret;
-      state[activeTab] = next;
+      codeMemory = next;
       paintEditorNow();
       return true;
     }
@@ -2819,19 +2958,8 @@
      * @param {string} chunk
      * @returns {boolean}
      */
-    function appendToTab(tab, chunk) {
-      const base = tab === activeTab ? editor.value : (state[tab] || '');
-      const next = base.trim() ? base.replace(/\s*$/, '\n\n') + chunk : chunk;
-      if (byteLength(next) > LIMIT) {
-        toast('Превышен лимит 100 КБ для этой вкладки');
-        return false;
-      }
-      state[tab] = next;
-      if (tab === activeTab) {
-        editor.value = next;
-        paintEditorNow();
-      }
-      return true;
+    function appendToTab(_tab, chunk) {
+      return insertAtCursor(String(chunk || ''));
     }
 
     /**
@@ -2851,13 +2979,13 @@
       const replaced = selected.split('\n').map(function (line) { return '  ' + line; }).join('\n');
       const next = value.slice(0, lineStart) + replaced + value.slice(end);
       if (byteLength(next) > LIMIT) {
-        toast('Превышен лимит 100 КБ для этой вкладки');
+        toast('Превышен лимит 100 КБ');
         return;
       }
       editor.value = next;
       editor.selectionStart = start + 2;
       editor.selectionEnd = end + (replaced.length - selected.length);
-      state[activeTab] = next;
+      codeMemory = next;
       paintEditorNow();
       afterEdit();
     }
@@ -2879,7 +3007,7 @@
       const delta = selected.length - replaced.length;
       editor.selectionStart = Math.max(lineStart, start - Math.min(2, delta));
       editor.selectionEnd = Math.max(editor.selectionStart, end - delta);
-      state[activeTab] = editor.value;
+      codeMemory = editor.value;
       paintEditorNow();
       afterEdit();
     }
@@ -3081,7 +3209,7 @@
      */
     async function copyAll() {
       try {
-        await copyText(buildCombined(readState()), 'Код скопирован!');
+        await copyText(editor.value, 'Код скопирован!');
       } catch (err) {
         toast('Ошибка копирования');
       }
@@ -3126,17 +3254,8 @@
      * @param {Record<string, string>} current
      * @returns {string}
      */
-    function buildHash(current) {
-      const payload = JSON.stringify({
-        html: current.html,
-        css: current.css,
-        js: current.js,
-        json: current.json,
-        svg: current.svg,
-        xml: current.xml,
-        md: current.md
-      });
-      return '#code=' + encodeURIComponent(encodeBase64Utf8(payload));
+    function buildHash(code) {
+      return '#code=' + encodeURIComponent(encodeBase64Utf8(String(code || '')));
     }
 
     /**
@@ -3177,14 +3296,13 @@
      * Resolve a share link, accepting the old single-string format.
      * @returns {{state:Record<string,string>, tab:string, legacy:boolean}|null|undefined}
      */
-    function readSharedState() {
+    function readSharedCode() {
       const decoded = decodeHashPayload();
       if (decoded === undefined) return undefined;
       if (decoded === null) return null;
       const parsed = tryParseState(decoded);
-      if (parsed) return { state: parsed, tab: firstFilled(parsed), legacy: false };
-      const loose = importLooseCode(decoded);
-      return { state: loose, tab: firstFilled(loose), legacy: true };
+      if (parsed) return concatenateTabs(parsed);
+      return decoded;
     }
 
     /**
@@ -3218,10 +3336,9 @@
     function saveDraftNow() {
       try {
         const payload = {
-          version: 1,
+          version: 2,
           savedAt: new Date().toISOString(),
-          activeTab: activeTab,
-          state: readState()
+          code: readState()
         };
         localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
         return true;
@@ -3244,19 +3361,18 @@
     }
 
     /**
-     * Read the stored draft, or null when it is missing or unreadable.
-     * @returns {{state:Record<string,string>, activeTab:string}|null}
+     * Read the stored draft. Old multi-tab drafts are concatenated into one string.
+     * @returns {{code:string}|null}
      */
     function readDraft() {
       try {
         const raw = localStorage.getItem(DRAFT_KEY);
         if (!raw) return null;
         const data = JSON.parse(raw);
-        if (!data || typeof data !== 'object' || !data.state || typeof data.state !== 'object') return null;
-        return {
-          state: cloneState(data.state),
-          activeTab: TABS.indexOf(data.activeTab) === -1 ? 'html' : data.activeTab
-        };
+        if (!data || typeof data !== 'object') return null;
+        if (typeof data.code === 'string') return { code: data.code };
+        if (data.state && typeof data.state === 'object') return { code: concatenateTabs(data.state) };
+        return null;
       } catch (err) {
         return null;
       }
@@ -3322,10 +3438,9 @@
         if (insertAtCursor(text)) afterEdit();
         return;
       }
-      if (!appendToTab(decision.mode, text.trim())) return;
-      switchTab(decision.mode);
-      afterEdit('Фрагмент перенесён');
-      toast('Фрагмент перенесён на вкладку ' + TAB_LABELS[decision.mode]);
+      if (!insertAtCursor(text)) return;
+      afterEdit('Фрагмент вставлен');
+      toast('Фрагмент вставлен');
     }
 
     /**
@@ -3349,7 +3464,7 @@
     function loadExample(name) {
       const example = EXAMPLES[name];
       if (!example) return;
-      applyFullState(example.files, example.tab, { dirty: true, status: 'Пример загружен' });
+      applyCode(snippetOf(example), { dirty: true, status: 'Пример загружен' });
       closeExamples();
       scheduleDraft();
       runPreview();
@@ -3362,13 +3477,13 @@
      */
     function formatActive() {
       try {
-        const next = formatCode(activeTab, editor.value);
+        const next = formatMixed(editor.value);
         if (byteLength(next) > LIMIT) {
-          toast('Превышен лимит 100 КБ для этой вкладки');
+          toast('Превышен лимит 100 КБ');
           return;
         }
         editor.value = next;
-        state[activeTab] = next;
+        codeMemory = next;
         paintEditorNow();
         afterEdit('Отформатировано');
       } catch (err) {
@@ -3382,9 +3497,9 @@
      */
     function minifyActive() {
       try {
-        const next = minifyCode(activeTab, editor.value);
+        const next = minifyMixed(editor.value);
         editor.value = next;
-        state[activeTab] = next;
+        codeMemory = next;
         paintEditorNow();
         afterEdit('Сжато');
       } catch (err) {
@@ -3398,14 +3513,9 @@
      */
     function clearAll() {
       if (!window.confirm('Вы уверены?')) return;
-      TABS.forEach(function (key) {
-        state[key] = '';
-        scrollMemory[key] = 0;
-      });
-      activeTab = 'html';
       dirty = true;
+      codeMemory = '';
       editor.value = '';
-      updateTabUI();
       paintEditorNow();
       clearPreviewFrame();
       updateStats();
@@ -3429,7 +3539,7 @@
       try { history.replaceState(null, '', location.pathname + location.search); } catch (err) { /* ignore */ }
       dirty = false;
       window.clearTimeout(draftTimer);
-      applyFullState(EXAMPLES.hello.files, 'html', { dirty: false, status: 'Черновик сброшен' });
+      applyCode(snippetOf(EXAMPLES.hello), { dirty: false, status: 'Черновик сброшен' });
       setDraftLabel('Черновик не сохранён');
       shareFallback.hidden = true;
       runPreview();
@@ -3511,14 +3621,14 @@
       editor.addEventListener('input', function () {
         if (byteLength(editor.value) > LIMIT) {
           const caret = editor.selectionStart;
-          editor.value = state[activeTab] || '';
+          editor.value = codeMemory || '';
           const pos = Math.min(caret, editor.value.length);
           editor.selectionStart = editor.selectionEnd = pos;
           paintEditorNow();
-          toast('Превышен лимит 100 КБ для этой вкладки');
+          toast('Превышен лимит 100 КБ');
           return;
         }
-        state[activeTab] = editor.value;
+        codeMemory = editor.value;
         paintEditorNow();
         afterEdit();
       });
@@ -3529,42 +3639,15 @@
         } catch (err) {
           text = '';
         }
-        if (!text) return;
-        if (activeTab === 'html') {
-          const decision = analyzePaste(text);
-          if (decision.mode !== 'insert') {
-            event.preventDefault();
-            if (pasteBusy) return;
-            pasteBusy = true;
-            openPasteDialog(text, decision).finally(function () { pasteBusy = false; });
-            return;
-          }
-        }
-        if (!event.isTrusted) {
-          event.preventDefault();
-          if (insertAtCursor(text)) afterEdit();
-        }
+        if (!text || event.isTrusted) return;
+        event.preventDefault();
+        if (insertAtCursor(text)) afterEdit();
       });
       editor.addEventListener('scroll', function () {
         gutter.scrollTop = editor.scrollTop;
       });
       editorBody.addEventListener('scroll', function () {
         gutter.scrollTop = editorBody.scrollTop;
-      });
-      must('tabs').addEventListener('click', function (event) {
-        const button = event.target.closest('[data-tab]');
-        if (!button) return;
-        switchTab(button.getAttribute('data-tab') || 'html', { focus: true });
-      });
-      must('tabs').addEventListener('keydown', function (event) {
-        if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
-        event.preventDefault();
-        const index = TABS.indexOf(activeTab);
-        const direction = event.key === 'ArrowRight' ? 1 : -1;
-        const next = TABS[(index + direction + TABS.length) % TABS.length];
-        switchTab(next, { focus: false });
-        const tab = document.getElementById('tab-' + next);
-        if (tab) tab.focus();
       });
       must('btnRun').addEventListener('click', runPreview);
       must('btnRefresh').addEventListener('click', runPreview);
@@ -3622,15 +3705,12 @@
         if (dirty) saveDraftNow();
       });
       window.addEventListener('hashchange', function () {
-        const shared = readSharedState();
-        if (!shared) {
+        const shared = readSharedCode();
+        if (typeof shared !== 'string') {
           if (shared === null) toast('Не удалось прочитать ссылку');
           return;
         }
-        applyFullState(shared.state, shared.tab, {
-          dirty: true,
-          status: shared.legacy ? 'Загружен код из ссылки' : 'Загружено из ссылки'
-        });
+        applyCode(shared, { dirty: true, status: 'Загружено из ссылки' });
         setDraftLabel('Черновик не сохранён');
         scheduleDraft();
         runPreview();
@@ -3647,13 +3727,10 @@
     function init() {
       bindEvents();
       loadHighlighter();
-      const shared = readSharedState();
+      const shared = readSharedCode();
       if (shared === null) toast('Не удалось прочитать ссылку');
-      if (shared) {
-        applyFullState(shared.state, shared.tab, {
-          dirty: true,
-          status: shared.legacy ? 'Загружен код из ссылки' : 'Загружено из ссылки'
-        });
+      if (typeof shared === 'string') {
+        applyCode(shared, { dirty: true, status: 'Загружено из ссылки' });
         setDraftLabel('Черновик не сохранён');
         scheduleDraft();
         runPreview();
@@ -3661,12 +3738,12 @@
       }
       const draft = readDraft();
       if (draft) {
-        applyFullState(draft.state, draft.activeTab, { dirty: true, status: 'Черновик восстановлен' });
+        applyCode(draft.code, { dirty: true, status: 'Черновик восстановлен' });
         setDraftLabel('Черновик восстановлен');
         runPreview();
         return;
       }
-      applyFullState(EXAMPLES.hello.files, 'html', { dirty: false, status: 'Готово' });
+      applyCode(snippetOf(EXAMPLES.hello), { dirty: false, status: 'Готово' });
       setDraftLabel('Черновик не сохранён');
       runPreview();
     }
