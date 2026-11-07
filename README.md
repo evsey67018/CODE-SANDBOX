@@ -7,7 +7,7 @@
 ## Как открыть
 
 - Локально: откройте `index.html` в браузере или запустите любой статический сервер в корне репозитория.
-- В интернете: адрес проекта `https://evsey67018.github.io/my-ai/` после включения GitHub Pages (шаги ниже).
+- В интернете: https://evsey67018.github.io/CODE-SANDBOX/
 
 На странице `file://` буфер обмена и `localStorage` в части браузеров ограничены. Для черновиков и кнопки «Поделиться» удобнее локальный сервер или Pages.
 
@@ -47,6 +47,6 @@
 1. Откройте репозиторий на GitHub → **Settings** → **Pages**.
 2. В **Build and deployment** выберите **GitHub Actions** и сохраните. В репозитории уже есть `.github/workflows/pages.yml`: он выкладывает корень репозитория. После включения источника перезапустите workflow **Deploy GitHub Pages**.
 3. Либо выберите **Deploy from a branch**, ветка `main`, папка `/ (root)`.
-4. Сайт откроется по адресу `https://evsey67018.github.io/my-ai/`.
+4. Сайт открывается по адресу https://evsey67018.github.io/CODE-SANDBOX/ . Репозиторий: https://github.com/evsey67018/CODE-SANDBOX .
 
 Имя репозитория `code-sandbox` задаётся отдельно: **Settings** → **General** → **Repository name**.

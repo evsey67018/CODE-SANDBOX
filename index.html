@@ -1756,26 +1756,111 @@
     }
 
     /**
+     * Hide strings, template literals and comments so markup inside them is not real HTML.
+     * @param {string} source
+     * @returns {string}
+     */
+    function maskStringsAndComments(source) {
+      const src = String(source);
+      let out = '';
+      let index = 0;
+      while (index < src.length) {
+        const char = src[index];
+        const next = src[index + 1];
+        if (char === '/' && next === '/') {
+          while (index < src.length && src[index] !== '\n') {
+            out += ' ';
+            index += 1;
+          }
+          continue;
+        }
+        if (char === '/' && next === '*') {
+          out += '  ';
+          index += 2;
+          while (index < src.length && !(src[index] === '*' && src[index + 1] === '/')) {
+            out += ' ';
+            index += 1;
+          }
+          if (index < src.length) {
+            out += '  ';
+            index += 2;
+          }
+          continue;
+        }
+        if (char === '"' || char === "'" || char === '`') {
+          const quote = char;
+          out += ' ';
+          index += 1;
+          let depth = 0;
+          while (index < src.length) {
+            const current = src[index];
+            if (current === '\\') {
+              out += '  ';
+              index += 2;
+              continue;
+            }
+            if (quote === '`' && current === '$' && src[index + 1] === '{') {
+              out += '  ';
+              index += 2;
+              depth += 1;
+              continue;
+            }
+            if (current === '{' && depth > 0) depth += 1;
+            if (current === '}' && depth > 0) {
+              depth -= 1;
+              out += ' ';
+              index += 1;
+              continue;
+            }
+            if (current === quote && depth === 0) {
+              out += ' ';
+              index += 1;
+              break;
+            }
+            out += current === '\n' ? '\n' : ' ';
+            index += 1;
+          }
+          continue;
+        }
+        out += char;
+        index += 1;
+      }
+      return out;
+    }
+
+    /**
+     * True when the buffer contains real HTML tags, not comparisons or strings.
      * @param {string} text
      * @returns {boolean}
      */
-    function looksLikeCss(text) {
-      if (/<[a-z!/]/i.test(text)) return false;
-      const hasRule = /[^{}]+\{[^}]+\}/.test(text);
-      const props = (text.match(/\b(color|background|margin|padding|display|font-size|border|width|height|animation|transform)\s*:/gi) || []).length;
-      const scripts = (text.match(/\b(function|const|let|var|return|document|console)\b/g) || []).length;
-      return hasRule && props > 0 && scripts === 0;
+    function hasHtmlMarkup(text) {
+      const visible = maskStringsAndComments(text);
+      return /<\/?(?:html|head|body|style|script|div|span|p|h[1-6]|a|ul|ol|li|button|input|form|img|svg|section|main|header|footer|nav|article|pre|code|table|tr|td|th|br|hr|label|textarea|select|option|canvas|video|audio|link|meta|title|template|iframe|blockquote|strong|em|figure|details|summary|dialog|main)\b/i.test(visible);
     }
 
     /**
      * @param {string} text
      * @returns {boolean}
      */
+    function looksLikeCss(text) {
+      if (hasHtmlMarkup(text) || looksLikeJs(text)) return false;
+      const hasRule = /[^{}]+\{[^}:;]+\}/.test(text) || /\{[^}]*:[^}]*\}/.test(text);
+      const props = (text.match(/\b(?:color|background|margin|padding|display|font-size|font-family|border|width|height|animation|transform)\s*:/gi) || []).length;
+      return hasRule && props > 0;
+    }
+
+    /**
+     * Code with no HTML tags and JavaScript tokens is a script, even if a string contains CSS.
+     * @param {string} text
+     * @returns {boolean}
+     */
     function looksLikeJs(text) {
-      if (/<[a-z!/]/i.test(text)) return false;
-      const scripts = (text.match(/\b(function|const|let|var|return|class|import|export|document|console|=>)\b/g) || []).length;
-      const props = (text.match(/\b(color|margin|padding|display)\s*:/gi) || []).length;
-      return scripts >= 2 && props === 0;
+      if (hasHtmlMarkup(text)) return false;
+      if (/\bfunction\b|\b(?:const|let|var)\b|=>|\bconsole\s*\.|\bdocument\s*\.|\bwindow\s*\.|\bclass\b|\b(?:import|export)\b|\bcreateElement\b|\baddEventListener\b|\bquerySelector(?:All)?\b/.test(text)) {
+        return true;
+      }
+      const weak = text.match(/\b(?:return|if|for|while|switch|new|this)\b/g) || [];
+      return weak.length >= 2;
     }
 
     /**
@@ -1794,7 +1879,7 @@
      * @returns {boolean}
      */
     function looksLikeMarkdown(text) {
-      if (/<[a-z!/]/i.test(text)) return false;
+      if (hasHtmlMarkup(text)) return false;
       const headings = (text.match(/^#{1,6}\s+\S/gm) || []).length;
       const lists = (text.match(/^\s*(?:[-*]|\d+\.)\s+\S/gm) || []).length;
       return headings + lists >= 2 || (headings >= 1 && /\*\*[^*]+\*\*/.test(text));
@@ -1850,11 +1935,20 @@
       if (looksLikeJson(trimmed)) return 'json';
       if (looksLikeSvg(trimmed)) return 'svg';
       if (looksLikeXml(trimmed)) return 'xml';
-      if (looksLikeMarkdown(trimmed) && !/<[a-z!/]/i.test(trimmed)) return 'md';
-      if (looksLikeCss(trimmed)) return 'css';
-      if (looksLikeJs(trimmed)) return 'js';
-      if (/<[a-z!/]/i.test(trimmed)) return 'html';
-      return 'text';
+      if (!hasHtmlMarkup(trimmed)) {
+        const script = looksLikeJs(trimmed);
+        const markdown = looksLikeMarkdown(trimmed);
+        if (script && markdown) {
+          const headings = (trimmed.match(/^#{1,6}\s+\S/gm) || []).length;
+          const lists = (trimmed.match(/^\s*(?:[-*]|\d+\.)\s+\S/gm) || []).length;
+          if (headings + lists >= 2) return 'md';
+        }
+        if (script) return 'js';
+        if (looksLikeCss(trimmed)) return 'css';
+        if (markdown) return 'md';
+        return 'text';
+      }
+      return 'html';
     }
 
     /**
