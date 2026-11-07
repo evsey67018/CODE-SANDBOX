@@ -1,0 +1,3682 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Code Sandbox — однофайловая онлайн-песочница для HTML, CSS, JavaScript, JSON, SVG, XML и Markdown.">
+  <title>Code Sandbox</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%23ff7f3f'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Fira+Code:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <style>
+    /* ----------------------------------------------------------
+       Palette, reset, background
+       ---------------------------------------------------------- */
+    :root {
+      --orange-50: #fff8f3;
+      --orange-100: #ffeadb;
+      --orange-200: #ffd6b8;
+      --orange-300: #ffbf94;
+      --orange-400: #ff9f66;
+      --orange-500: #ff7f3f;
+      --orange-600: #e8652a;
+      --cream: #fffaf6;
+      --peach: #ffe0cc;
+      --text-main: #4a2c1a;
+      --text-soft: #a07a62;
+      --gold: #f5c88a;
+      --success: #7bc47f;
+      --danger: #e85d5d;
+      --editor-bg: #1b1410;
+      --editor-gutter: #120e0b;
+      --editor-text: #f6e4d8;
+      --editor-muted: #8d6f5e;
+      --line: 22px;
+      --editor-size: 14px;
+      --shadow: 0 18px 40px rgba(232, 101, 42, 0.1);
+      --glass: rgba(255, 250, 246, 0.72);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body { margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      color: var(--text-main);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, rgba(255, 214, 184, 0.7), transparent 60%),
+        radial-gradient(900px 420px at 110% 0%, rgba(245, 200, 138, 0.45), transparent 55%),
+        var(--cream);
+      font-family: system-ui, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    body.lock { overflow: hidden; }
+
+    button, input { font: inherit; color: inherit; }
+
+    button { cursor: pointer; }
+
+    h1, h2, h3 {
+      font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+      font-weight: 700;
+    }
+
+    .skip {
+      position: absolute;
+      left: 12px;
+      top: -40px;
+      z-index: 80;
+      background: white;
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 999px;
+    }
+
+    .skip:focus { top: 12px; }
+
+    .bg-orbs {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(2px);
+      opacity: 0.85;
+      animation: floaty 14s ease-in-out infinite;
+    }
+
+    .orb-1 { width: 240px; height: 240px; background: var(--orange-200); top: -70px; left: -50px; }
+    .orb-2 { width: 180px; height: 180px; background: var(--gold); top: 18%; right: -40px; animation-delay: -3s; }
+    .orb-3 { width: 140px; height: 140px; background: var(--peach); bottom: 8%; left: 6%; animation-delay: -6s; }
+    .orb-4 { width: 220px; height: 220px; background: var(--orange-100); bottom: -80px; right: 12%; animation-delay: -9s; }
+    .orb-5 { width: 90px; height: 90px; background: var(--orange-300); top: 42%; left: 38%; opacity: 0.45; animation-delay: -2s; }
+
+    @keyframes floaty {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-16px) scale(1.04); }
+    }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: min(100% - 16px, 100%);
+      margin: 0 auto;
+      padding: 10px 0 18px;
+    }
+
+    /* ----------------------------------------------------------
+       Header and toolbar
+       ---------------------------------------------------------- */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: var(--glass);
+      border: 1px solid rgba(255, 191, 148, 0.55);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+
+    .mark {
+      width: 46px;
+      height: 46px;
+      flex: none;
+      display: grid;
+      place-items: center;
+      border-radius: 16px;
+      color: white;
+      background: linear-gradient(160deg, var(--orange-300), var(--orange-600));
+      box-shadow: 0 10px 24px rgba(232, 101, 42, 0.28);
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-size: 22px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 32px;
+      letter-spacing: 0.08em;
+      line-height: 0.9;
+    }
+
+    .tagline { margin: 2px 0 0; color: var(--text-soft); font-size: 13px; }
+
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+    .btn {
+      border: 1px solid rgba(255, 191, 148, 0.9);
+      background: rgba(255, 255, 255, 0.88);
+      color: var(--text-main);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 650;
+      box-shadow: 0 6px 16px rgba(232, 101, 42, 0.08);
+      transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); background: var(--orange-100); }
+
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary {
+      border-color: transparent;
+      color: white;
+      background: linear-gradient(180deg, var(--orange-400), var(--orange-600));
+    }
+
+    .btn-primary:hover { background: linear-gradient(180deg, var(--orange-500), var(--orange-600)); }
+
+    .btn-danger {
+      color: var(--danger);
+      border-color: rgba(232, 93, 93, 0.35);
+      background: white;
+    }
+
+    .btn:focus-visible, .tab:focus-visible, .menu button:focus-visible {
+      outline: 2px solid var(--orange-500);
+      outline-offset: 2px;
+    }
+
+    .dropdown { position: relative; }
+
+    .menu {
+      display: none;
+      position: absolute;
+      z-index: 40;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 240px;
+      padding: 8px;
+      flex-direction: column;
+      gap: 4px;
+      background: rgba(255, 250, 246, 0.96);
+      border: 1px solid var(--orange-200);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .menu.open { display: flex; }
+
+    .menu button {
+      text-align: left;
+      border: 0;
+      background: transparent;
+      border-radius: 10px;
+      padding: 8px 10px;
+      color: var(--text-main);
+    }
+
+    .menu button:hover { background: var(--orange-100); }
+
+    .hints {
+      margin: 0 4px 10px;
+      color: var(--text-soft);
+      font-size: 12px;
+    }
+
+    .share-fallback {
+      width: min(100%, 420px);
+      border: 1px solid var(--orange-300);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: white;
+    }
+
+    /* ----------------------------------------------------------
+       Workspace, tabs, badges
+       ---------------------------------------------------------- */
+    .workspace { display: flex; flex-direction: column; gap: 12px; }
+
+    .pane {
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid rgba(255, 214, 184, 0.95);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      padding: 12px;
+      min-width: 0;
+    }
+
+    .pane-head, .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .pane-head h2 { margin: 0; font-size: 30px; line-height: 1; }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .tab {
+      flex: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: transparent;
+      color: var(--text-soft);
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .tab[aria-selected="true"] {
+      background: white;
+      color: var(--orange-600);
+      box-shadow: 0 6px 16px rgba(232, 101, 42, 0.12);
+    }
+
+    .badges { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .badge {
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: var(--orange-50);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .share-bar {
+      flex: 1;
+      min-width: 120px;
+      height: 8px;
+      display: flex;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--peach);
+    }
+
+    .seg { height: 100%; width: 0; transition: width 0.25s ease; }
+    .seg-html { background: var(--orange-500); }
+    .seg-css { background: var(--gold); }
+    .seg-js { background: var(--success); }
+    .seg-text { background: var(--text-soft); }
+
+    /* ----------------------------------------------------------
+       Dark editor
+       ---------------------------------------------------------- */
+    .editor-shell {
+      display: flex;
+      height: 340px;
+      background: var(--editor-bg);
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid #3a271c;
+      color-scheme: dark;
+    }
+
+    .editor-shell:focus-within { box-shadow: 0 0 0 3px rgba(255, 127, 63, 0.35); }
+
+    .gutter {
+      flex: 0 0 auto;
+      min-width: 46px;
+      overflow: hidden;
+      background: var(--editor-gutter);
+      color: var(--editor-muted);
+      text-align: right;
+      user-select: none;
+      padding: 12px 8px 12px 4px;
+    }
+
+    .ln { display: block; }
+
+    .editor-body {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+      overflow: auto;
+      background: var(--editor-bg);
+      scrollbar-color: #6b4c3a var(--editor-bg);
+    }
+
+    .editor-sizer { position: relative; min-height: 100%; }
+
+    .placeholder {
+      position: absolute;
+      z-index: 0;
+      inset: 0 auto auto 0;
+      margin: 0;
+      color: var(--editor-muted);
+      pointer-events: none;
+    }
+
+    #highlightLayer {
+      position: relative;
+      z-index: 1;
+      margin: 0;
+      pointer-events: none;
+      overflow: visible;
+      background: transparent !important;
+      color: var(--editor-text);
+      min-height: 100%;
+    }
+
+    #highlightCode {
+      display: block;
+      background: transparent !important;
+      padding: 0 !important;
+      margin: 0;
+      color: inherit;
+    }
+
+    #editor {
+      position: absolute;
+      z-index: 2;
+      inset: 0;
+      width: 100%;
+      margin: 0;
+      border: 0;
+      resize: none;
+      overflow: hidden;
+      background: transparent;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      caret-color: var(--orange-300);
+    }
+
+    #editor::selection {
+      background: rgba(255, 159, 102, 0.35);
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .code-text, .gutter, .placeholder, .measurer {
+      font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: var(--editor-size);
+      line-height: var(--line);
+      font-weight: 400;
+      letter-spacing: 0;
+      font-variant-ligatures: none;
+      font-feature-settings: "liga" 0, "calt" 0;
+      tab-size: 2;
+    }
+
+    #highlightLayer, #highlightCode, #editor, .placeholder, .measurer {
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+
+    #highlightLayer, #editor, .placeholder { padding: 12px 14px; }
+
+    .measurer {
+      position: fixed;
+      left: -12000px;
+      top: 0;
+      visibility: hidden;
+      pointer-events: none;
+      padding: 0;
+      width: 100px;
+    }
+
+    #highlightCode .hljs-keyword,
+    #highlightCode .hljs-selector-tag,
+    #highlightCode .hljs-section { color: #ff9f66; }
+    #highlightCode .hljs-string,
+    #highlightCode .hljs-attr { color: #f5c88a; }
+    #highlightCode .hljs-number,
+    #highlightCode .hljs-literal { color: #8fd18a; }
+    #highlightCode .hljs-comment { color: #a07a62; }
+    #highlightCode .hljs-title,
+    #highlightCode .hljs-name,
+    #highlightCode .hljs-built_in { color: #ffd6b8; }
+
+    /* ----------------------------------------------------------
+       Preview, console, status, modal
+       ---------------------------------------------------------- */
+    .preview-frame {
+      width: 100%;
+      min-height: 260px;
+      height: 300px;
+      border: 1px solid var(--orange-200);
+      border-radius: 16px;
+      background: white;
+    }
+
+    .console {
+      margin-top: 10px;
+      background: var(--editor-bg);
+      color: var(--editor-text);
+      border-radius: 16px;
+      min-height: 120px;
+      max-height: 180px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .console-head {
+      padding: 8px 12px 4px;
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .console-log {
+      overflow: auto;
+      padding: 0 12px 10px;
+      font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .console-empty { color: var(--editor-muted); margin: 0; }
+
+    .console-row {
+      display: flex;
+      gap: 8px;
+      padding: 3px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .console-level { flex: none; color: var(--gold); }
+    .level-error .console-level, .level-error .console-msg { color: #ffb1b1; }
+    .level-warn .console-level, .level-warn .console-msg { color: var(--gold); }
+
+    .statusbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      justify-content: space-between;
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 16px;
+      background: var(--glass);
+      border: 1px solid rgba(255, 191, 148, 0.5);
+      color: var(--text-soft);
+      font-size: 13px;
+      backdrop-filter: blur(12px);
+    }
+
+    #statusText { color: var(--text-main); font-weight: 700; }
+
+    .toast-host {
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      z-index: 70;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: min(360px, calc(100% - 24px));
+    }
+
+    .toast {
+      background: white;
+      color: var(--text-main);
+      border-left: 4px solid var(--orange-500);
+      border-radius: 14px;
+      padding: 10px 12px;
+      box-shadow: var(--shadow);
+      animation: rise 0.2s ease;
+    }
+
+    .toast.out { opacity: 0; transition: opacity 0.25s ease; }
+
+    @keyframes rise {
+      from { transform: translateY(8px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(74, 44, 26, 0.28);
+      backdrop-filter: blur(6px);
+    }
+
+    .modal-card {
+      width: min(460px, 100%);
+      background: var(--cream);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--orange-200);
+    }
+
+    .modal-card h3 { margin: 0 0 8px; font-size: 32px; line-height: 1; }
+    .modal-card p { margin: 0 0 14px; color: var(--text-soft); }
+    .modal-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+
+    .fs-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 65;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(74, 44, 26, 0.38);
+      backdrop-filter: blur(8px);
+    }
+
+    .fs-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: var(--glass);
+      border: 1px solid var(--orange-200);
+    }
+
+    .fs-bar h2 { margin: 0; font-size: 28px; }
+    .fs-actions { display: flex; gap: 8px; }
+    .fs-overlay iframe { flex: 1; width: 100%; border: 0; border-radius: 16px; background: white; min-height: 0; }
+
+    .modal[hidden], .fs-overlay[hidden], .share-fallback[hidden], #consoleEmpty[hidden], .placeholder[hidden] {
+      display: none !important;
+    }
+
+    .noscript {
+      margin: 12px;
+      padding: 12px;
+      background: white;
+      border-radius: 12px;
+    }
+
+    /* ----------------------------------------------------------
+       Breakpoints: 480 / 768 / 1024 / 1440
+       ---------------------------------------------------------- */
+    @media (min-width: 480px) {
+      .shell { width: min(100% - 28px, 100%); padding-top: 14px; }
+      .brand h1 { font-size: 40px; }
+      .topbar { padding: 14px; }
+      .editor-shell { height: 400px; }
+      .preview-frame { height: 340px; }
+      .modal { align-items: center; }
+    }
+
+    @media (min-width: 768px) {
+      .shell { width: min(100% - 40px, 1100px); }
+      .hints { font-size: 13px; }
+      .editor-shell { height: 460px; }
+      .preview-frame { min-height: 320px; height: 380px; }
+      .btn { padding: 8px 14px; }
+    }
+
+    @media (min-width: 1024px) {
+      .shell { width: min(100% - 48px, 1200px); }
+      .topbar { flex-direction: row; align-items: center; justify-content: space-between; }
+      .workspace { flex-direction: row; align-items: stretch; min-height: calc(100vh - 210px); }
+      .pane { flex: 1; display: flex; flex-direction: column; }
+      .editor-shell { flex: 1; height: auto; min-height: 480px; }
+      .preview-frame { flex: 1; height: auto; min-height: 360px; }
+      .preview-pane { min-height: 0; }
+    }
+
+    @media (min-width: 1440px) {
+      :root { --editor-size: 15px; --line: 24px; }
+      .shell { width: min(100% - 80px, 1360px); }
+      .brand h1 { font-size: 52px; }
+      .pane { padding: 16px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#editor">К редактору</a>
+  <div class="bg-orbs" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+    <span class="orb orb-4"></span>
+    <span class="orb orb-5"></span>
+  </div>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">CS</div>
+        <div>
+          <h1>CODE SANDBOX</h1>
+          <p class="tagline">Онлайн-песочница для кода</p>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button type="button" class="btn btn-primary" id="btnRun" aria-keyshortcuts="Control+Enter">Запустить</button>
+        <button type="button" class="btn" id="btnCopy" aria-keyshortcuts="Control+Shift+C">Копировать весь код</button>
+        <button type="button" class="btn btn-danger" id="btnClear">Очистить</button>
+        <button type="button" class="btn" id="btnDownload" aria-keyshortcuts="Control+S">Скачать</button>
+        <button type="button" class="btn" id="btnFormat">Форматировать</button>
+        <button type="button" class="btn" id="btnMinify">Сжать</button>
+        <button type="button" class="btn" id="btnFull">На весь экран</button>
+        <button type="button" class="btn" id="btnShare">Поделиться</button>
+        <div class="dropdown">
+          <button type="button" class="btn" id="examplesBtn" aria-haspopup="true" aria-expanded="false" aria-controls="examplesMenu">Примеры</button>
+          <div class="menu" id="examplesMenu" role="menu">
+            <button type="button" role="menuitem" id="ex-hello" data-example="hello">Привет, мир (HTML)</button>
+            <button type="button" role="menuitem" id="ex-button" data-example="button">Анимированная кнопка (CSS)</button>
+            <button type="button" role="menuitem" id="ex-calc" data-example="calc">Калькулятор (JavaScript)</button>
+            <button type="button" role="menuitem" id="ex-json" data-example="json">JSON-объект</button>
+            <button type="button" role="menuitem" id="ex-svg" data-example="svg">SVG-иконка</button>
+            <button type="button" role="menuitem" id="ex-md" data-example="markdown">Markdown-документ</button>
+          </div>
+        </div>
+        <button type="button" class="btn" id="btnReset">Сбросить черновик</button>
+        <input id="shareFallback" class="share-fallback" hidden readonly aria-label="Ссылка для копирования">
+      </div>
+    </header>
+    <p class="hints">Горячие клавиши: Ctrl+Enter — запуск, Ctrl+Shift+C — копировать всё, Ctrl+S — скачать, Tab — два пробела, Esc — закрыть полноэкранный режим. На Mac вместо Ctrl используйте Cmd для запуска.</p>
+    <main class="workspace">
+      <section class="pane editor-pane" aria-label="Редактор">
+        <div class="tabs" id="tabs" role="tablist" aria-label="Языки">
+          <button type="button" class="tab" role="tab" id="tab-html" data-tab="html" aria-controls="editor" aria-selected="true">HTML</button>
+          <button type="button" class="tab" role="tab" id="tab-css" data-tab="css" aria-controls="editor" aria-selected="false" tabindex="-1">CSS</button>
+          <button type="button" class="tab" role="tab" id="tab-js" data-tab="js" aria-controls="editor" aria-selected="false" tabindex="-1">JavaScript</button>
+          <button type="button" class="tab" role="tab" id="tab-json" data-tab="json" aria-controls="editor" aria-selected="false" tabindex="-1">JSON</button>
+          <button type="button" class="tab" role="tab" id="tab-svg" data-tab="svg" aria-controls="editor" aria-selected="false" tabindex="-1">SVG</button>
+          <button type="button" class="tab" role="tab" id="tab-xml" data-tab="xml" aria-controls="editor" aria-selected="false" tabindex="-1">XML</button>
+          <button type="button" class="tab" role="tab" id="tab-md" data-tab="md" aria-controls="editor" aria-selected="false" tabindex="-1">Markdown</button>
+        </div>
+        <div class="meta-row">
+          <div class="badges" id="badges" aria-label="Доли языков">
+            <span class="badge" id="badgeHtml">HTML 0%</span>
+            <span class="badge" id="badgeCss">CSS 0%</span>
+            <span class="badge" id="badgeJs">JS 0%</span>
+            <span class="badge" id="badgeText">Текст 0%</span>
+          </div>
+          <div class="share-bar" id="shareBar" aria-hidden="true">
+            <span class="seg seg-html" id="segHtml"></span>
+            <span class="seg seg-css" id="segCss"></span>
+            <span class="seg seg-js" id="segJs"></span>
+            <span class="seg seg-text" id="segText"></span>
+          </div>
+        </div>
+        <div class="editor-shell" id="editorShell" role="tabpanel" aria-labelledby="tab-html">
+          <div class="gutter code-text" id="gutter" aria-hidden="true"></div>
+          <div class="editor-body" id="editorBody">
+            <div class="editor-sizer" id="editorSizer">
+              <div class="placeholder code-text" id="placeholder">Введите HTML…</div>
+              <pre class="code-text" id="highlightLayer"><code class="code-text" id="highlightCode"></code></pre>
+              <textarea class="code-text" id="editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" wrap="soft" aria-multiline="true" aria-label="Редактор: HTML"></textarea>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="pane preview-pane" aria-label="Предпросмотр">
+        <div class="pane-head">
+          <h2>Предпросмотр</h2>
+          <button type="button" class="btn" id="btnRefresh">Обновить</button>
+        </div>
+        <iframe class="preview-frame" id="preview" name="preview" title="Предпросмотр" sandbox="allow-scripts"></iframe>
+        <div class="console" id="console">
+          <div class="console-head">Консоль</div>
+          <div class="console-log" id="consoleLog" aria-live="polite">
+            <p class="console-empty" id="consoleEmpty">Консоль пуста. Запустите код, чтобы увидеть сообщения.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="statusbar">
+      <span id="statusText" aria-live="polite">Готово</span>
+      <span id="draftState">Черновик не сохранён</span>
+      <span id="charCount">0 символов</span>
+    </footer>
+  </div>
+  <div class="toast-host" id="toastHost" aria-live="polite"></div>
+  <div class="modal" id="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h3 id="modalTitle">Вставка</h3>
+      <p id="modalText"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="modalCancel">Отмена</button>
+        <button type="button" class="btn btn-primary" id="modalOk">ОК</button>
+      </div>
+    </div>
+  </div>
+  <div class="fs-overlay" id="fsOverlay" hidden>
+    <div class="fs-bar">
+      <h2>Полноэкранный предпросмотр</h2>
+      <div class="fs-actions">
+        <button type="button" class="btn btn-primary" id="fsRun">Запустить</button>
+        <button type="button" class="btn" id="fsClose">Закрыть</button>
+      </div>
+    </div>
+    <iframe id="fsFrame" name="fsFrame" title="Полноэкранный предпросмотр" sandbox="allow-scripts"></iframe>
+  </div>
+  <div class="measurer code-text" id="measurer" aria-hidden="true"></div>
+  <noscript><p class="noscript">Для работы песочницы нужен JavaScript.</p></noscript>
+  <script>
+    'use strict';
+
+    /* ----------------------------------------------------------
+     * Code Sandbox
+     * One editor, seven languages, sandboxed preview.
+     * User code runs only inside iframes with sandbox="allow-scripts".
+     * The parent page never evaluates user code.
+     * ---------------------------------------------------------- */
+
+    /* ----------------------------------------------------------
+     * 1. Constants
+     * ---------------------------------------------------------- */
+
+    /** Ordered editor tabs and state keys. */
+    const TABS = ['html', 'css', 'js', 'json', 'svg', 'xml', 'md'];
+
+    /** Human labels for tabs. */
+    const TAB_LABELS = {
+      html: 'HTML',
+      css: 'CSS',
+      js: 'JavaScript',
+      json: 'JSON',
+      svg: 'SVG',
+      xml: 'XML',
+      md: 'Markdown'
+    };
+
+    /** Placeholder shown in the empty editor. */
+    const PLACEHOLDERS = {
+      html: 'Введите HTML…',
+      css: 'Введите CSS…',
+      js: 'Введите JavaScript…',
+      json: 'Введите JSON…',
+      svg: 'Введите SVG…',
+      xml: 'Введите XML…',
+      md: 'Введите Markdown…'
+    };
+
+    /** highlight.js language ids. */
+    const HLJS_LANG = {
+      html: 'xml',
+      css: 'css',
+      js: 'javascript',
+      json: 'json',
+      svg: 'xml',
+      xml: 'xml',
+      md: 'markdown'
+    };
+
+    /** localStorage key for the autosaved draft. */
+    const DRAFT_KEY = 'code_sandbox_draft';
+
+    /** Per-tab size ceiling, in bytes. */
+    const LIMIT = 100 * 1024;
+
+    /** Skip syntax highlighting above this size so typing stays responsive. */
+    const HIGHLIGHT_LIMIT = 60 * 1024;
+
+    /** Debounce for preview refresh and draft writes. */
+    const PREVIEW_DELAY = 1000;
+    const DRAFT_DELAY = 1000;
+
+    /** Console level captions. */
+    const LEVELS = {
+      log: 'лог',
+      info: 'инфо',
+      warn: 'предупреждение',
+      error: 'ошибка',
+      debug: 'отладка'
+    };
+
+    /** Words that must keep a following newline (automatic semicolon insertion). */
+    const ASI_WORDS = { return: 1, throw: 1, yield: 1, break: 1, continue: 1 };
+
+    /** Base look of the sandboxed document, before user CSS. */
+    const BASE_CSS = [
+      'body{margin:16px;color:#3d2618;background:#fffdfb;font-family:Georgia,"Times New Roman",serif;}',
+      '.sandbox-json{background:#fff1e6;color:#4a2c1a;padding:12px 14px;border-radius:12px;overflow:auto;',
+      'font-family:ui-monospace,monospace;font-size:13px;line-height:1.5;white-space:pre-wrap;}',
+      '.sandbox-md h1,.sandbox-md h2,.sandbox-md h3,.sandbox-md h4,.sandbox-md h5,.sandbox-md h6{line-height:1.2;margin:0.6em 0 0.3em;}',
+      '.sandbox-md p{margin:0.4em 0;}',
+      '.sandbox-md pre{background:#fff1e6;padding:12px;border-radius:12px;overflow:auto;}',
+      '.sandbox-md code{font-family:ui-monospace,monospace;background:#fff1e6;padding:0 4px;border-radius:4px;}',
+      '.sandbox-md pre code{background:transparent;padding:0;}',
+      '.sandbox-md a{color:#e8652a;}'
+    ].join('');
+
+    /**
+     * Hooks installed inside the preview document.
+     * RUN and DOCK are injected by buildBoot().
+     * The text must not contain a closing script tag.
+     */
+    const BOOT_BODY = [
+      'function send(payload){',
+      "  try{parent.postMessage(Object.assign({source:'code-sandbox-console',runId:RUN},payload),'*');}catch(e){}",
+      '}',
+      'function preview(value){',
+      "  try{",
+      "    if(typeof value==='undefined')return 'undefined';",
+      "    if(typeof value==='string')return value;",
+      '    if(value===null)return "null";',
+      "    if(typeof value==='bigint')return String(value)+'n';",
+      '    if(value instanceof Error)return value.stack||(value.name+": "+value.message);',
+      "    if(typeof value==='function')return value.name?'[function '+value.name+']':'[function]';",
+      '    return JSON.stringify(value);',
+      '  }catch(e){',
+      '    try{return String(value);}catch(err){return "[value]";}',
+      '  }',
+      '}',
+      'function emit(level,args){',
+      '  var text=[];',
+      '  for(var i=0;i<args.length;i++)text.push(preview(args[i]));',
+      "  send({kind:'console',level:level,args:text});",
+      '  if(DOCK&&window.__sandboxDockPush)window.__sandboxDockPush(level,text.join(" "));',
+      '}',
+      "['log','info','warn','error','debug'].forEach(function(level){",
+      '  var original=console[level]?console[level].bind(console):function(){};',
+      '  console[level]=function(){',
+      '    try{original.apply(console,arguments);}catch(e){}',
+      '    emit(level,arguments);',
+      '  };',
+      '});',
+      "window.addEventListener('error',function(ev){",
+      "  emit('error',[ev.message+(ev.lineno?' (строка '+ev.lineno+')':'')]);",
+      '});',
+      "window.addEventListener('unhandledrejection',function(ev){",
+      "  emit('error',[preview(ev.reason)]);",
+      '});',
+      'if(DOCK){',
+      "  var host=document.createElement('div');",
+      '  document.documentElement.appendChild(host);',
+      "  var root=host.attachShadow({mode:'open'});",
+      "  root.innerHTML='<style>.box{position:fixed;left:8px;right:8px;bottom:8px;max-height:34vh;overflow:auto;background:#1b1410;color:#f6e4d8;font:12px/1.45 ui-monospace,monospace;border-radius:12px;padding:8px 10px;z-index:2147483646}.row{white-space:pre-wrap;border-top:1px solid rgba(255,255,255,.08);padding:3px 0}.error{color:#ffb4b4}.warn{color:#f5c88a}</style><div class=\"box\"><div>Консоль</div><div class=\"log\"></div></div>';",
+      "  var log=root.querySelector('.log');",
+      '  window.__sandboxDockPush=function(level,text){',
+      "    var row=document.createElement('div');",
+      "    row.className='row '+level;",
+      '    row.textContent=text;',
+      '    log.appendChild(row);',
+      '  };',
+      '}'
+    ].join('\n');
+
+    /* ----------------------------------------------------------
+     * 2. Examples
+     * ---------------------------------------------------------- */
+
+    /** Built-in examples. Each one replaces every tab so the preview stays focused. */
+    const EXAMPLES = {
+      hello: {
+        tab: 'html',
+        files: {
+          html: [
+            '<main class="card">',
+            '  <p class="eyebrow">Демонстрация</p>',
+            '  <h1>Привет, мир!</h1>',
+            '  <p>Отредактируйте код и нажмите «Запустить». Предпросмотр обновляется сам через секунду.</p>',
+            '  <button id="helloBtn" type="button">Показать приветствие</button>',
+            '  <p id="helloOut" class="out"></p>',
+            '</main>'
+          ].join('\n'),
+          css: [
+            'body {',
+            '  margin: 0;',
+            '  min-height: 100vh;',
+            '  display: grid;',
+            '  place-items: center;',
+            '  background: linear-gradient(160deg, #fff8f3, #ffd6b8);',
+            '  font-family: Georgia, serif;',
+            '  color: #4a2c1a;',
+            '}',
+            '.card {',
+            '  width: min(92vw, 460px);',
+            '  background: rgba(255, 255, 255, 0.82);',
+            '  border-radius: 24px;',
+            '  padding: 28px;',
+            '  box-shadow: 0 18px 40px rgba(232, 101, 42, 0.16);',
+            '}',
+            '.eyebrow { margin: 0; letter-spacing: 0.08em; text-transform: uppercase; color: #a07a62; font-size: 12px; }',
+            'h1 { margin: 8px 0; font-size: 42px; }',
+            'button {',
+            '  background: #ff7f3f;',
+            '  color: white;',
+            '  border: 0;',
+            '  border-radius: 999px;',
+            '  padding: 10px 18px;',
+            '  cursor: pointer;',
+            '}',
+            '.out { min-height: 1.4em; font-weight: 700; }'
+          ].join('\n'),
+          js: [
+            "const button = document.getElementById('helloBtn');",
+            "const out = document.getElementById('helloOut');",
+            'if (button && out) {',
+            "  button.addEventListener('click', function () {",
+            "    out.textContent = 'Привет из песочницы!';",
+            "    console.log('Кнопка нажата');",
+            '  });',
+            '}',
+            "console.log('Песочница готова');"
+          ].join('\n'),
+          json: '',
+          svg: '',
+          xml: '',
+          md: ''
+        }
+      },
+      button: {
+        tab: 'css',
+        files: {
+          html: '<div class="stage"><button class="glow" type="button">Живая кнопка</button></div>',
+          css: [
+            'body {',
+            '  margin: 0;',
+            '  min-height: 100vh;',
+            '  display: grid;',
+            '  place-items: center;',
+            '  background: #fff8f3;',
+            '}',
+            '.glow {',
+            '  border: 0;',
+            '  color: white;',
+            '  font-size: 22px;',
+            '  padding: 16px 28px;',
+            '  border-radius: 999px;',
+            '  cursor: pointer;',
+            '  background: linear-gradient(120deg, #ff9f66, #e8652a, #f5c88a);',
+            '  background-size: 200% 200%;',
+            '  animation: flow 3s ease infinite, pulse 2.4s ease-in-out infinite;',
+            '}',
+            '.glow:hover { transform: translateY(-3px) scale(1.04); }',
+            '@keyframes flow {',
+            '  0% { background-position: 0% 50%; }',
+            '  50% { background-position: 100% 50%; }',
+            '  100% { background-position: 0% 50%; }',
+            '}',
+            '@keyframes pulse {',
+            '  0%, 100% { box-shadow: 0 10px 24px rgba(232, 101, 42, 0.28); }',
+            '  50% { box-shadow: 0 18px 36px rgba(255, 127, 63, 0.5); }',
+            '}'
+          ].join('\n'),
+          js: "console.log('Кнопка рисуется стилями');",
+          json: '',
+          svg: '',
+          xml: '',
+          md: ''
+        }
+      },
+      calc: {
+        tab: 'js',
+        files: {
+          html: [
+            '<div class="calc">',
+            '  <p class="calc-title">Калькулятор</p>',
+            '  <output id="display">0</output>',
+            '  <div class="keys">',
+            '    <button type="button" data-key="7">7</button>',
+            '    <button type="button" data-key="8">8</button>',
+            '    <button type="button" data-key="9">9</button>',
+            '    <button type="button" data-key="/">÷</button>',
+            '    <button type="button" data-key="4">4</button>',
+            '    <button type="button" data-key="5">5</button>',
+            '    <button type="button" data-key="6">6</button>',
+            '    <button type="button" data-key="*">×</button>',
+            '    <button type="button" data-key="1">1</button>',
+            '    <button type="button" data-key="2">2</button>',
+            '    <button type="button" data-key="3">3</button>',
+            '    <button type="button" data-key="-">−</button>',
+            '    <button type="button" data-key="0">0</button>',
+            '    <button type="button" data-key="c">C</button>',
+            '    <button type="button" data-key="=">=</button>',
+            '    <button type="button" data-key="+">+</button>',
+            '  </div>',
+            '</div>'
+          ].join('\n'),
+          css: [
+            'body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #fff8f3; font-family: Georgia, serif; }',
+            '.calc { width: 260px; background: white; border-radius: 20px; padding: 16px; box-shadow: 0 16px 40px rgba(232, 101, 42, 0.15); }',
+            '.calc-title { margin: 0 0 8px; color: #a07a62; }',
+            '#display { display: block; text-align: right; font: 28px/1.3 ui-monospace, monospace; background: #fff1e6; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; }',
+            '.keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }',
+            '.keys button { border: 0; border-radius: 12px; padding: 12px 0; background: #ffeadb; cursor: pointer; font-size: 16px; }',
+            '.keys button:hover { background: #ffd6b8; }'
+          ].join('\n'),
+          js: [
+            '(function () {',
+            "  const root = document.querySelector('.calc');",
+            "  const display = document.getElementById('display');",
+            '  if (!root || !display) return;',
+            "  let current = '0';",
+            '  let stored = null;',
+            '  let operator = null;',
+            '  let fresh = false;',
+            '  function render() { display.textContent = current; }',
+            '  function calculate(left, right, op) {',
+            '    const x = Number(left);',
+            '    const y = Number(right);',
+            "    if (op === '+') return String(x + y);",
+            "    if (op === '-') return String(x - y);",
+            "    if (op === '*') return String(x * y);",
+            "    if (op === '/') return y === 0 ? 'Ошибка' : String(x / y);",
+            '    return String(y);',
+            '  }',
+            "  root.addEventListener('click', function (event) {",
+            "    const button = event.target.closest('button');",
+            '    if (!button) return;',
+            '    const key = button.getAttribute("data-key");',
+            "    if (key >= '0' && key <= '9') {",
+            "      current = fresh || current === '0' ? key : current + key;",
+            '      fresh = false;',
+            '      render();',
+            '      return;',
+            '    }',
+            "    if (key === 'c') {",
+            "      current = '0';",
+            '      stored = null;',
+            '      operator = null;',
+            '      fresh = false;',
+            '      render();',
+            '      return;',
+            '    }',
+            "    if (key === '=') {",
+            '      if (operator && stored !== null) {',
+            '        current = calculate(stored, current, operator);',
+            "        console.log('Результат', current);",
+            '        stored = null;',
+            '        operator = null;',
+            '        fresh = true;',
+            '        render();',
+            '      }',
+            '      return;',
+            '    }',
+            "    if ('+-*/'.indexOf(key) !== -1) {",
+            '      if (operator && stored !== null && !fresh) current = calculate(stored, current, operator);',
+            '      stored = current;',
+            '      operator = key;',
+            '      fresh = true;',
+            '      render();',
+            '    }',
+            '  });',
+            "  console.log('Калькулятор готов');",
+            '})();'
+          ].join('\n'),
+          json: '',
+          svg: '',
+          xml: '',
+          md: ''
+        }
+      },
+      json: {
+        tab: 'json',
+        files: {
+          html: '<h1>JSON не выполняется</h1><p>Объект ниже только показывается.</p>',
+          css: 'body{font-family:Georgia,serif;color:#4a2c1a;background:#fffaf6;}',
+          js: "console.log('JSON остаётся текстом');",
+          json: JSON.stringify({
+            name: 'Code Sandbox',
+            language: 'ru',
+            tabs: ['html', 'css', 'js', 'json', 'svg', 'xml', 'md'],
+            limits: { perTabBytes: 102400 },
+            safe: true
+          }, null, 2),
+          svg: '',
+          xml: '',
+          md: ''
+        }
+      },
+      svg: {
+        tab: 'svg',
+        files: {
+          html: '',
+          css: 'body{margin:0;min-height:100vh;display:grid;place-items:center;background:#fff8f3;}',
+          js: "console.log('SVG нарисован');",
+          json: '',
+          svg: [
+            '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="Солнце">',
+            '  <circle cx="90" cy="90" r="34" fill="#ff7f3f"/>',
+            '  <g stroke="#e8652a" stroke-width="8" stroke-linecap="round">',
+            '    <path d="M90 18v24M90 138v24M18 90h24M138 90h24M34 34l18 18M128 128l18 18M146 34l-18 18M52 128l-18 18"/>',
+            '  </g>',
+            '</svg>'
+          ].join('\n'),
+          xml: '',
+          md: ''
+        }
+      },
+      markdown: {
+        tab: 'md',
+        files: {
+          html: '',
+          css: '',
+          js: "console.log('Markdown преобразован в HTML');",
+          json: '',
+          svg: '',
+          xml: '<note><to>читатель</to><body>XML показан рядом с документом</body></note>',
+          md: [
+            '# Заметки песочницы',
+            '',
+            'Короткий документ с **жирным**, *курсивом* и `кодом`.',
+            '',
+            '## Список',
+            '',
+            '- Первая мысль',
+            '- Вторая мысль',
+            '',
+            '1. Откройте вкладку',
+            '2. Запустите предпросмотр',
+            '',
+            '[Документация](https://example.com)',
+            '',
+            '```',
+            "console.log('block')",
+            '```'
+          ].join('\n')
+        }
+      }
+    };
+
+    /** Copy for the paste dialog, keyed by analyzer mode. */
+    const PASTE_COPY = {
+      extract: {
+        title: 'Смешанный код',
+        text: 'Во вставленном HTML найдены стили и скрипты. Перенести CSS и JavaScript на свои вкладки?',
+        ok: 'Разложить',
+        cancel: 'Вставить как есть'
+      },
+      css: {
+        title: 'Похоже на CSS',
+        text: 'Фрагмент похож на таблицу стилей. Перенести его на вкладку CSS?',
+        ok: 'Перенести',
+        cancel: 'Вставить в HTML'
+      },
+      js: {
+        title: 'Похоже на JavaScript',
+        text: 'Фрагмент похож на сценарий. Перенести его на вкладку JavaScript?',
+        ok: 'Перенести',
+        cancel: 'Вставить в HTML'
+      },
+      json: {
+        title: 'Похоже на JSON',
+        text: 'Фрагмент разбирается как JSON. Перенести его на вкладку JSON?',
+        ok: 'Перенести',
+        cancel: 'Вставить в HTML'
+      },
+      svg: {
+        title: 'Похоже на SVG',
+        text: 'Фрагмент похож на SVG-иконку. Перенести его на вкладку SVG?',
+        ok: 'Перенести',
+        cancel: 'Вставить в HTML'
+      },
+      xml: {
+        title: 'Похоже на XML',
+        text: 'Фрагмент похож на XML. Перенести его на вкладку XML?',
+        ok: 'Перенести',
+        cancel: 'Вставить в HTML'
+      },
+      md: {
+        title: 'Похоже на Markdown',
+        text: 'Фрагмент похож на Markdown. Перенести его на вкладку Markdown?',
+        ok: 'Перенести',
+        cancel: 'Вставить в HTML'
+      }
+    };
+
+    /* ----------------------------------------------------------
+     * 3. DOM and mutable state
+     * ---------------------------------------------------------- */
+
+    /**
+     * Require a node by id.
+     * @param {string} id
+     * @returns {HTMLElement}
+     */
+    function must(id) {
+      const node = document.getElementById(id);
+      if (!node) throw new Error('Не найден #' + id);
+      return node;
+    }
+
+    const editor = /** @type {HTMLTextAreaElement} */ (must('editor'));
+    const editorShell = must('editorShell');
+    const editorBody = must('editorBody');
+    const highlightLayer = must('highlightLayer');
+    const highlightCode = must('highlightCode');
+    const gutter = must('gutter');
+    const measurer = must('measurer');
+    const placeholder = must('placeholder');
+    const preview = /** @type {HTMLIFrameElement} */ (must('preview'));
+    const fsFrame = /** @type {HTMLIFrameElement} */ (must('fsFrame'));
+    const fsOverlay = must('fsOverlay');
+    const consoleLog = must('consoleLog');
+    const consoleEmpty = must('consoleEmpty');
+    const statusText = must('statusText');
+    const draftState = must('draftState');
+    const charCount = must('charCount');
+    const toastHost = must('toastHost');
+    const modal = must('modal');
+    const modalTitle = must('modalTitle');
+    const modalText = must('modalText');
+    const modalOk = must('modalOk');
+    const modalCancel = must('modalCancel');
+    const examplesBtn = must('examplesBtn');
+    const examplesMenu = must('examplesMenu');
+    const shareFallback = /** @type {HTMLInputElement} */ (must('shareFallback'));
+    const badgeHtml = must('badgeHtml');
+    const badgeCss = must('badgeCss');
+    const badgeJs = must('badgeJs');
+    const badgeText = must('badgeText');
+    const segHtml = must('segHtml');
+    const segCss = must('segCss');
+    const segJs = must('segJs');
+    const segText = must('segText');
+
+    /** @type {{html:string,css:string,js:string,json:string,svg:string,xml:string,md:string}} */
+    const state = emptyState();
+    let activeTab = 'html';
+    let dirty = false;
+    let currentRun = 0;
+    let currentDoc = '';
+    let previewTimer = 0;
+    let draftTimer = 0;
+    let pasteBusy = false;
+    let painting = false;
+    /** @type {HTMLElement|null} */
+    let modalReturn = null;
+    /** @type {((value:boolean)=>void)|null} */
+    let modalResolver = null;
+    /** @type {{text:string,at:number}} */
+    let lastToast = { text: '', at: 0 };
+    /** @type {Record<string, number>} */
+    const scrollMemory = { html: 0, css: 0, js: 0, json: 0, svg: 0, xml: 0, md: 0 };
+
+    /* ----------------------------------------------------------
+     * 4. Small utilities
+     * ---------------------------------------------------------- */
+
+    /**
+     * Blank sandbox state.
+     * @returns {{html:string,css:string,js:string,json:string,svg:string,xml:string,md:string}}
+     */
+    function emptyState() {
+      return { html: '', css: '', js: '', json: '', svg: '', xml: '', md: '' };
+    }
+
+    /**
+     * Copy known tab fields out of a loose object.
+     * @param {Record<string, string>} source
+     * @returns {{html:string,css:string,js:string,json:string,svg:string,xml:string,md:string}}
+     */
+    function cloneState(source) {
+      const next = emptyState();
+      TABS.forEach(function (key) {
+        next[key] = source && typeof source[key] === 'string' ? source[key] : '';
+      });
+      return next;
+    }
+
+    /**
+     * UTF-8 byte length.
+     * @param {string} text
+     * @returns {number}
+     */
+    function byteLength(text) {
+      if (window.TextEncoder) return new TextEncoder().encode(text).length;
+      return unescape(encodeURIComponent(text)).length;
+    }
+
+    /**
+     * Cut a string so its UTF-8 form fits the limit.
+     * @param {string} text
+     * @param {number} limit
+     * @returns {string}
+     */
+    function clipToBytes(text, limit) {
+      const encoder = new TextEncoder();
+      if (encoder.encode(text).length <= limit) return text;
+      let low = 0;
+      let high = text.length;
+      while (low < high) {
+        const mid = Math.ceil((low + high) / 2);
+        if (encoder.encode(text.slice(0, mid)).length <= limit) low = mid;
+        else high = mid - 1;
+      }
+      return text.slice(0, low);
+    }
+
+    /**
+     * Enforce the per-tab ceiling.
+     * @param {Record<string, string>} target
+     * @returns {Record<string, string>}
+     */
+    function clampState(target) {
+      let warned = false;
+      TABS.forEach(function (key) {
+        const value = typeof target[key] === 'string' ? target[key] : '';
+        if (byteLength(value) > LIMIT) {
+          target[key] = clipToBytes(value, LIMIT);
+          warned = true;
+        } else target[key] = value;
+      });
+      if (warned) toast('Превышен лимит 100 КБ для этой вкладки');
+      return target;
+    }
+
+    /**
+     * Escape text for HTML.
+     * @param {string} value
+     * @returns {string}
+     */
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    /**
+     * Reverse the escapes produced by escapeHtml.
+     * @param {string} value
+     * @returns {string}
+     */
+    function decodeBasicEntities(value) {
+      return String(value)
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+    }
+
+    /**
+     * Encode a Unicode string as standard base64.
+     * @param {string} value
+     * @returns {string}
+     */
+    function encodeBase64Utf8(value) {
+      const bytes = new TextEncoder().encode(value);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary);
+    }
+
+    /**
+     * Decode standard base64 into a Unicode string.
+     * @param {string} value
+     * @returns {string}
+     */
+    function decodeBase64Utf8(value) {
+      const binary = atob(value);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      return new TextDecoder().decode(bytes);
+    }
+
+    /**
+     * Russian plural for "символ".
+     * @param {number} count
+     * @returns {string}
+     */
+    function symbolWord(count) {
+      const abs = Math.abs(count) % 100;
+      const last = abs % 10;
+      if (abs > 10 && abs < 20) return 'символов';
+      if (last === 1) return 'символ';
+      if (last >= 2 && last <= 4) return 'символа';
+      return 'символов';
+    }
+
+    /**
+     * Format an integer with a Russian plural.
+     * @param {number} count
+     * @returns {string}
+     */
+    function formatCount(count) {
+      const formatted = new Intl.NumberFormat('ru-RU').format(count);
+      return formatted + ' ' + symbolWord(count);
+    }
+
+    /**
+     * Largest-remainder percentages that add up to 100, or zeros when empty.
+     * @param {number[]} parts
+     * @returns {number[]}
+     */
+    function toPercents(parts) {
+      const total = parts.reduce(function (sum, value) { return sum + value; }, 0);
+      if (!total) return parts.map(function () { return 0; });
+      const raw = parts.map(function (value) { return (value / total) * 100; });
+      const floors = raw.map(function (value) { return Math.floor(value); });
+      let rest = 100 - floors.reduce(function (sum, value) { return sum + value; }, 0);
+      const order = raw.map(function (value, index) {
+        return { index: index, fraction: value - Math.floor(value) };
+      }).sort(function (a, b) { return b.fraction - a.fraction; });
+      for (let i = 0; i < rest; i += 1) floors[order[i % order.length].index] += 1;
+      return floors;
+    }
+
+    /**
+     * Set the status line.
+     * @param {string} text
+     */
+    function setStatus(text) {
+      statusText.textContent = text;
+    }
+
+    /**
+     * Set the draft caption.
+     * @param {string} text
+     */
+    function setDraftLabel(text) {
+      draftState.textContent = text;
+    }
+
+    /**
+     * Show a short toast. Identical messages are throttled.
+     * @param {string} message
+     */
+    function toast(message) {
+      const now = Date.now();
+      if (lastToast.text === message && now - lastToast.at < 1200) return;
+      lastToast = { text: message, at: now };
+      const node = document.createElement('div');
+      node.className = 'toast';
+      node.textContent = message;
+      toastHost.appendChild(node);
+      window.setTimeout(function () {
+        node.classList.add('out');
+        window.setTimeout(function () { node.remove(); }, 250);
+      }, 2600);
+    }
+
+    /**
+     * Keep a closing style tag inside user CSS from ending the preview head.
+     * @param {string} css
+     * @returns {string}
+     */
+    function safeStyle(css) {
+      return String(css).replace(/<\/style/gi, '<\\/style');
+    }
+
+    /**
+     * Encode user code as a JavaScript string literal for the sandbox frame.
+     * Angle brackets are escaped so the HTML parser cannot close the preview script.
+     * @param {string} code
+     * @returns {string}
+     */
+    function jsStringLiteral(code) {
+      return JSON.stringify(String(code))
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029')
+        .replace(/</g, '\\u003c')
+        .replace(/>/g, '\\u003e');
+    }
+
+    /**
+     * Stop user markup from closing the preview document early.
+     * @param {string} fragment
+     * @returns {string}
+     */
+    function neutralizeDocumentClosers(fragment) {
+      return String(fragment).replace(/<\/(body|html|head)\s*>/gi, function (_all, name) {
+        return '&lt;/' + name + '&gt;';
+      });
+    }
+
+    /* ----------------------------------------------------------
+     * 5. Markdown
+     * ---------------------------------------------------------- */
+
+    /**
+     * Allow only http(s) and mailto links.
+     * @param {string} url
+     * @returns {string}
+     */
+    function sanitizeUrl(url) {
+      const cleaned = String(url).replace(/[\u0000-\u001F\s]+/g, '');
+      if (/^(https?:\/\/|mailto:)/i.test(cleaned)) return cleaned;
+      return '';
+    }
+
+    /**
+     * Render a markdown link after the label and URL have been escaped.
+     * @param {string} label
+     * @param {string} url
+     * @returns {string}
+     */
+    function renderLink(label, url) {
+      const safe = sanitizeUrl(decodeBasicEntities(url).trim());
+      if (!safe) return label;
+      return '<a href="' + escapeHtml(safe) + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
+    }
+
+    /**
+     * Apply emphasis and links to an already escaped line.
+     * @param {string} escaped
+     * @returns {string}
+     */
+    function emphasize(escaped) {
+      let text = escaped;
+      text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      text = text.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+      text = text.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+      text = text.replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,!?:;])/g, '$1<em>$2</em>');
+      text = text.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (_all, label, url) {
+        return renderLink(label, url);
+      });
+      return text;
+    }
+
+    /**
+     * Render inline markdown. Raw HTML is escaped before tags are created.
+     * @param {string} raw
+     * @returns {string}
+     */
+    function renderInline(raw) {
+      const parts = String(raw).split(/(`[^`\n]+`)/g);
+      return parts.map(function (part) {
+        if (/^`[^`\n]+`$/.test(part)) return '<code>' + escapeHtml(part.slice(1, -1)) + '</code>';
+        return emphasize(escapeHtml(part));
+      }).join('');
+    }
+
+    /**
+     * Convert a small markdown subset into HTML.
+     * Supports headings, lists, bold, italic, inline code, fenced code and links.
+     * @param {string} source
+     * @returns {string}
+     */
+    function markdownToHtml(source) {
+      const lines = String(source || '').replace(/\r\n/g, '\n').split('\n');
+      const out = [];
+      /** @type {string[]} */
+      let paragraph = [];
+      /**
+       * Flush the current paragraph.
+       * @returns {void}
+       */
+      function flushParagraph() {
+        if (!paragraph.length) return;
+        out.push('<p>' + renderInline(paragraph.join(' ')) + '</p>');
+        paragraph = [];
+      }
+      let index = 0;
+      while (index < lines.length) {
+        const line = lines[index];
+        if (line.trim().startsWith('```')) {
+          flushParagraph();
+          const buffer = [];
+          index += 1;
+          while (index < lines.length && !lines[index].trim().startsWith('```')) {
+            buffer.push(escapeHtml(lines[index]));
+            index += 1;
+          }
+          out.push('<pre><code>' + buffer.join('\n') + '</code></pre>');
+          if (index < lines.length) index += 1;
+          continue;
+        }
+        const heading = /^(#{1,6})\s+(.+)$/.exec(line);
+        if (heading) {
+          flushParagraph();
+          const level = heading[1].length;
+          out.push('<h' + level + '>' + renderInline(heading[2]) + '</h' + level + '>');
+          index += 1;
+          continue;
+        }
+        if (/^\s*[-*]\s+\S/.test(line)) {
+          flushParagraph();
+          const items = [];
+          while (index < lines.length && /^\s*[-*]\s+\S/.test(lines[index])) {
+            items.push('<li>' + renderInline(lines[index].replace(/^\s*[-*]\s+/, '')) + '</li>');
+            index += 1;
+          }
+          out.push('<ul>' + items.join('') + '</ul>');
+          continue;
+        }
+        if (/^\s*\d+\.\s+\S/.test(line)) {
+          flushParagraph();
+          const items = [];
+          while (index < lines.length && /^\s*\d+\.\s+\S/.test(lines[index])) {
+            items.push('<li>' + renderInline(lines[index].replace(/^\s*\d+\.\s+/, '')) + '</li>');
+            index += 1;
+          }
+          out.push('<ol>' + items.join('') + '</ol>');
+          continue;
+        }
+        if (line.trim() === '') {
+          flushParagraph();
+          index += 1;
+          continue;
+        }
+        paragraph.push(line.trim());
+        index += 1;
+      }
+      flushParagraph();
+      return out.join('\n');
+    }
+
+    /* ----------------------------------------------------------
+     * 6. Language detection
+     * ---------------------------------------------------------- */
+
+    /**
+     * Pull style and inline script blocks out of an HTML fragment.
+     * External scripts stay in the markup. The body, when present, becomes the HTML tab.
+     * @param {string} source
+     * @returns {{html:string,css:string,js:string}}
+     */
+    function extractEmbedded(source) {
+      let css = '';
+      let js = '';
+      let html = String(source || '');
+      html = html.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, function (_all, content) {
+        css += (css ? '\n' : '') + String(content).trim();
+        return '';
+      });
+      html = html.replace(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi, function (full, attrs, content) {
+        if (/\bsrc\s*=/i.test(attrs)) return full;
+        const typeMatch = String(attrs).match(/\btype\s*=\s*["']([^"']+)["']/i);
+        if (typeMatch && !/javascript|ecmascript|module/i.test(typeMatch[1])) return full;
+        js += (js ? '\n' : '') + String(content).trim();
+        return '';
+      });
+      const body = html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
+      if (body) html = body[1];
+      html = html.replace(/<\/?(?:html|head|body)\b[^>]*>/gi, '');
+      html = html.replace(/<!DOCTYPE[^>]*>/gi, '');
+      return { html: html.trim(), css: css.trim(), js: js.trim() };
+    }
+
+    /**
+     * @param {string} text
+     * @returns {boolean}
+     */
+    function looksLikeSvg(text) {
+      return /^<svg[\s>]/i.test(text) && /<\/svg>\s*$/i.test(text);
+    }
+
+    /**
+     * @param {string} text
+     * @returns {boolean}
+     */
+    function looksLikeJson(text) {
+      if (!/^[\[{]/.test(text)) return false;
+      try {
+        JSON.parse(text);
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+
+    /**
+     * @param {string} text
+     * @returns {boolean}
+     */
+    function looksLikeCss(text) {
+      if (/<[a-z!/]/i.test(text)) return false;
+      const hasRule = /[^{}]+\{[^}]+\}/.test(text);
+      const props = (text.match(/\b(color|background|margin|padding|display|font-size|border|width|height|animation|transform)\s*:/gi) || []).length;
+      const scripts = (text.match(/\b(function|const|let|var|return|document|console)\b/g) || []).length;
+      return hasRule && props > 0 && scripts === 0;
+    }
+
+    /**
+     * @param {string} text
+     * @returns {boolean}
+     */
+    function looksLikeJs(text) {
+      if (/<[a-z!/]/i.test(text)) return false;
+      const scripts = (text.match(/\b(function|const|let|var|return|class|import|export|document|console|=>)\b/g) || []).length;
+      const props = (text.match(/\b(color|margin|padding|display)\s*:/gi) || []).length;
+      return scripts >= 2 && props === 0;
+    }
+
+    /**
+     * @param {string} text
+     * @returns {boolean}
+     */
+    function looksLikeXml(text) {
+      if (looksLikeSvg(text)) return false;
+      if (/^<\?xml/i.test(text)) return true;
+      if (!/^<[A-Za-z][\w:.-]*(\s[^>]*)?>[\s\S]*<\/[A-Za-z][\w:.-]*>\s*$/.test(text)) return false;
+      return !/^<(html|div|p|span|h[1-6]|section|main|header|footer|ul|ol|li|a|button|form|table|article|nav|style|script)\b/i.test(text);
+    }
+
+    /**
+     * @param {string} text
+     * @returns {boolean}
+     */
+    function looksLikeMarkdown(text) {
+      if (/<[a-z!/]/i.test(text)) return false;
+      const headings = (text.match(/^#{1,6}\s+\S/gm) || []).length;
+      const lists = (text.match(/^\s*(?:[-*]|\d+\.)\s+\S/gm) || []).length;
+      return headings + lists >= 2 || (headings >= 1 && /\*\*[^*]+\*\*/.test(text));
+    }
+
+    /**
+     * Classify pasted text. HTML with embedded style or script is "extract".
+     * @param {string} text
+     * @returns {{mode:string, extracted?:{html:string,css:string,js:string}}}
+     */
+    function analyzePaste(text) {
+      const trimmed = String(text || '').trim();
+      if (trimmed.length < 2) return { mode: 'insert' };
+      const extracted = extractEmbedded(trimmed);
+      if ((extracted.css || extracted.js) && /<[a-z!/]/i.test(trimmed)) {
+        return { mode: 'extract', extracted: extracted };
+      }
+      if (looksLikeSvg(trimmed)) return { mode: 'svg' };
+      if (looksLikeJson(trimmed)) return { mode: 'json' };
+      if (looksLikeCss(trimmed)) return { mode: 'css' };
+      if (looksLikeJs(trimmed)) return { mode: 'js' };
+      if (looksLikeXml(trimmed)) return { mode: 'xml' };
+      if (looksLikeMarkdown(trimmed)) return { mode: 'md' };
+      return { mode: 'insert' };
+    }
+
+    /**
+     * Turn a legacy single-string share into tab state.
+     * @param {string} code
+     * @returns {{html:string,css:string,js:string,json:string,svg:string,xml:string,md:string}}
+     */
+    function importLooseCode(code) {
+      const next = emptyState();
+      const decision = analyzePaste(code);
+      if (decision.mode === 'extract' && decision.extracted) {
+        next.html = decision.extracted.html;
+        next.css = decision.extracted.css;
+        next.js = decision.extracted.js;
+      } else if (decision.mode !== 'insert' && TABS.indexOf(decision.mode) !== -1) {
+        next[decision.mode] = code;
+      } else next.html = code;
+      return next;
+    }
+
+    /**
+     * Character shares for the HTML / CSS / JS / Text badges.
+     * Embedded style and script inside the HTML tab are counted with their language.
+     * @param {Record<string, string>} current
+     * @returns {{html:number,css:number,js:number,text:number}}
+     */
+    function languageShares(current) {
+      const embedded = extractEmbedded(current.html);
+      const parts = [
+        embedded.html.length,
+        embedded.css.length + current.css.length,
+        embedded.js.length + current.js.length,
+        current.json.length + current.svg.length + current.xml.length + current.md.length
+      ];
+      const percents = toPercents(parts);
+      return { html: percents[0], css: percents[1], js: percents[2], text: percents[3] };
+    }
+
+    /**
+     * First tab that contains non-space text.
+     * @param {Record<string, string>} current
+     * @returns {string}
+     */
+    function firstFilled(current) {
+      for (let i = 0; i < TABS.length; i += 1) {
+        if (String(current[TABS[i]] || '').trim()) return TABS[i];
+      }
+      return 'html';
+    }
+
+    /* ----------------------------------------------------------
+     * 7. Formatters and minifiers
+     * ---------------------------------------------------------- */
+
+    /**
+     * @param {string} source
+     * @param {number} start
+     * @returns {string}
+     */
+    function readQuoted(source, start) {
+      const quote = source[start];
+      let index = start + 1;
+      let value = quote;
+      while (index < source.length) {
+        const char = source[index];
+        index += 1;
+        value += char;
+        if (char === '\\') {
+          if (index < source.length) {
+            value += source[index];
+            index += 1;
+          }
+          continue;
+        }
+        if (char === quote || char === '\n') break;
+      }
+      return value;
+    }
+
+    /**
+     * Read a template literal, including nested ${ } expressions.
+     * @param {string} source
+     * @param {number} start
+     * @returns {string}
+     */
+    function readTemplate(source, start) {
+      let index = start + 1;
+      let value = '`';
+      let depth = 0;
+      while (index < source.length) {
+        const char = source[index];
+        index += 1;
+        value += char;
+        if (char === '\\') {
+          if (index < source.length) {
+            value += source[index];
+            index += 1;
+          }
+          continue;
+        }
+        if (char === '`' && depth === 0) break;
+        if (char === '$' && source[index] === '{') {
+          value += source[index];
+          index += 1;
+          depth += 1;
+          continue;
+        }
+        if (depth > 0 && char === '{') depth += 1;
+        else if (depth > 0 && char === '}') depth -= 1;
+      }
+      return value;
+    }
+
+    /**
+     * Read a regular expression literal and its flags.
+     * @param {string} source
+     * @param {number} start
+     * @returns {string}
+     */
+    function readRegex(source, start) {
+      let index = start + 1;
+      let value = '/';
+      let inClass = false;
+      while (index < source.length) {
+        const char = source[index];
+        index += 1;
+        value += char;
+        if (char === '\\') {
+          if (index < source.length) {
+            value += source[index];
+            index += 1;
+          }
+          continue;
+        }
+        if (char === '[') inClass = true;
+        else if (char === ']') inClass = false;
+        else if (char === '/' && !inClass) break;
+        else if (char === '\n') break;
+      }
+      while (index < source.length && /[a-z]/i.test(source[index])) {
+        value += source[index];
+        index += 1;
+      }
+      return value;
+    }
+
+    /**
+     * Whether a slash can open a regex given the previous significant token.
+     * @param {{type:string,value:string}|null} previous
+     * @returns {boolean}
+     */
+    function canBeRegex(previous) {
+      if (!previous) return true;
+      if (previous.type === 'word') return /^(return|throw|case|delete|void|typeof|instanceof|in|of|new|yield|await|else|do)$/.test(previous.value);
+      if (previous.type === 'number' || previous.type === 'string' || previous.type === 'regex') return false;
+      if (previous.type === 'punct') return !/^(\)|\]|\+\+|--)$/.test(previous.value);
+      return true;
+    }
+
+    /**
+     * Tokenize JavaScript well enough to format and minify without executing it.
+     * @param {string} source
+     * @returns {{type:string,value:string}[]}
+     */
+    function tokenizeJs(source) {
+      const src = String(source).replace(/\r\n/g, '\n');
+      /** @type {{type:string,value:string}[]} */
+      const tokens = [];
+      /** @type {{type:string,value:string}|null} */
+      let previous = null;
+      let index = 0;
+      const ops = ['>>>=', '===', '!==', '>>>', '<<=', '>>=', '**=', '&&=', '||=', '??=', '==', '!=', '<=', '>=', '&&', '||', '??', '++', '--', '+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '<<', '>>', '=>', '?.'];
+      /**
+       * @param {string} type
+       * @param {string} value
+       */
+      function push(type, value) {
+        const token = { type: type, value: value };
+        tokens.push(token);
+        if (type !== 'space' && type !== 'newline' && type !== 'comment') previous = token;
+      }
+      while (index < src.length) {
+        const char = src[index];
+        if (char === '\n') { push('newline', '\n'); index += 1; continue; }
+        if (char === ' ' || char === '\t' || char === '\r') {
+          let spaces = char;
+          index += 1;
+          while (src[index] === ' ' || src[index] === '\t' || src[index] === '\r') {
+            spaces += src[index];
+            index += 1;
+          }
+          push('space', spaces);
+          continue;
+        }
+        if (char === '/' && src[index + 1] === '/') {
+          let comment = '//';
+          index += 2;
+          while (index < src.length && src[index] !== '\n') {
+            comment += src[index];
+            index += 1;
+          }
+          push('comment', comment);
+          continue;
+        }
+        if (char === '/' && src[index + 1] === '*') {
+          let comment = '/*';
+          index += 2;
+          while (index < src.length && !(src[index] === '*' && src[index + 1] === '/')) {
+            comment += src[index];
+            index += 1;
+          }
+          if (index < src.length) {
+            comment += '*/';
+            index += 2;
+          }
+          push('comment', comment);
+          continue;
+        }
+        if (char === '"' || char === "'") {
+          const text = readQuoted(src, index);
+          push('string', text);
+          index += text.length;
+          continue;
+        }
+        if (char === '`') {
+          const text = readTemplate(src, index);
+          push('string', text);
+          index += text.length;
+          continue;
+        }
+        if (char === '/' && canBeRegex(previous)) {
+          const text = readRegex(src, index);
+          push('regex', text);
+          index += text.length;
+          continue;
+        }
+        if (/[A-Za-z_$]/.test(char) || (char === '\\' && src[index + 1] === 'u')) {
+          let word = char;
+          index += 1;
+          while (index < src.length && /[A-Za-z0-9_$]/.test(src[index])) {
+            word += src[index];
+            index += 1;
+          }
+          push('word', word);
+          continue;
+        }
+        if (/[0-9]/.test(char) || (char === '.' && /[0-9]/.test(src[index + 1] || ''))) {
+          let number = char;
+          index += 1;
+          while (index < src.length && /[0-9A-Za-z_.]/.test(src[index])) {
+            number += src[index];
+            index += 1;
+          }
+          push('number', number);
+          continue;
+        }
+        const slice = src.slice(index, index + 4);
+        let found = '';
+        for (let op = 0; op < ops.length; op += 1) {
+          if (slice.startsWith(ops[op])) { found = ops[op]; break; }
+        }
+        if (found) {
+          push('punct', found);
+          index += found.length;
+          continue;
+        }
+        push('punct', char);
+        index += 1;
+      }
+      return tokens;
+    }
+
+    /**
+     * Next token that affects syntax.
+     * @param {{type:string,value:string}[]} tokens
+     * @param {number} index
+     * @returns {{type:string,value:string}|null}
+     */
+    function nextSignificant(tokens, index) {
+      for (let i = index + 1; i < tokens.length; i += 1) {
+        const token = tokens[i];
+        if (token.type !== 'space' && token.type !== 'newline' && token.type !== 'comment') return token;
+      }
+      return null;
+    }
+
+    /**
+     * Whether two tokens need a separating space.
+     * @param {{type:string,value:string}} previous
+     * @param {{type:string,value:string}} token
+     * @returns {boolean}
+     */
+    function needsSpace(previous, token) {
+      if (!previous) return false;
+      if (previous.type === 'word' && (token.type === 'word' || token.type === 'number')) return true;
+      if (previous.type === 'number' && token.type === 'word') return true;
+      if (previous.type === 'word' && token.value === '(' && /^(if|for|while|switch|catch|with|function)$/.test(previous.value)) return true;
+      if (previous.value === ')' && (token.value === '=>' || token.value === '{' || token.type === 'word')) return true;
+      if (previous.type === 'word' && (token.value === '{' || token.value === '=>')) return true;
+      if (previous.value === 'else' && token.value === '{') return true;
+      const operator = /^(=|\+=|-=|\*=|\/=|%=|==|===|!=|!==|<=|>=|&&|\|\||\?\?|\?|:|<|>|\+|-|\*|\/|%|&|\||\^)$/;
+      if (operator.test(previous.value) && token.type !== 'punct') return true;
+      if (operator.test(token.value) && previous.type !== 'punct') return true;
+      if (previous.value === ',' || previous.value === ':') return true;
+      if (previous.value === '=>' || token.value === '=>') return true;
+      return false;
+    }
+
+    /**
+     * @param {{type:string,value:string}|null} token
+     * @returns {boolean}
+     */
+    function isAsiRisk(token) {
+      if (!token) return false;
+      if (token.type === 'word' && ASI_WORDS[token.value]) return true;
+      return token.value === '++' || token.value === '--';
+    }
+
+    /**
+     * Pretty-print JavaScript from tokens. Newlines that protect ASI are kept.
+     * @param {string} source
+     * @returns {string}
+     */
+    function formatJsTokens(source) {
+      const tokens = tokenizeJs(source);
+      let indent = 0;
+      let paren = 0;
+      let out = '';
+      let atLineStart = true;
+      /** @type {{type:string,value:string}|null} */
+      let previous = null;
+      /**
+       * @returns {void}
+       */
+      function newline() {
+        out += '\n';
+        atLineStart = true;
+      }
+      /**
+       * @param {string} text
+       */
+      function write(text) {
+        if (atLineStart) {
+          out += '  '.repeat(Math.max(0, indent));
+          atLineStart = false;
+        }
+        out += text;
+      }
+      for (let index = 0; index < tokens.length; index += 1) {
+        const token = tokens[index];
+        if (token.type === 'space') continue;
+        if (token.type === 'comment') {
+          if (!atLineStart) write(' ');
+          write(token.value);
+          if (token.value.startsWith('//')) newline();
+          previous = token;
+          continue;
+        }
+        if (token.type === 'newline') {
+          if (isAsiRisk(previous)) newline();
+          continue;
+        }
+        if (token.value === '(') paren += 1;
+        if (token.value === ')' && paren > 0) paren -= 1;
+        if (token.value === '{') {
+          if (!atLineStart) write(' ');
+          write('{');
+          indent += 1;
+          newline();
+          previous = token;
+          continue;
+        }
+        if (token.value === '}') {
+          indent = Math.max(0, indent - 1);
+          if (!atLineStart) newline();
+          write('}');
+          const upcoming = nextSignificant(tokens, index);
+          if (upcoming && /^(else|catch|finally|while)$/.test(upcoming.value)) write(' ');
+          else if (upcoming && upcoming.value !== ';' && upcoming.value !== ',' && upcoming.value !== ')' && upcoming.value !== '.') newline();
+          previous = token;
+          continue;
+        }
+        if (token.value === ';') {
+          write(';');
+          const upcoming = nextSignificant(tokens, index);
+          if (paren === 0 && upcoming && upcoming.value !== '}') newline();
+          previous = token;
+          continue;
+        }
+        if (token.value === ',' && paren === 0) {
+          write(',');
+          newline();
+          previous = token;
+          continue;
+        }
+        if (!atLineStart && previous && needsSpace(previous, token)) write(' ');
+        write(token.value);
+        previous = token;
+      }
+      return out.replace(/\n{3,}/g, '\n\n').trim() + '\n';
+    }
+
+    /**
+     * Pretty-print JavaScript. The original source is returned if formatting throws.
+     * @param {string} source
+     * @returns {string}
+     */
+    function formatJs(source) {
+      if (!String(source).trim()) return '';
+      try {
+        return formatJsTokens(source);
+      } catch (err) {
+        return source;
+      }
+    }
+
+    /**
+     * Remove comments and extra horizontal space while keeping statement breaks.
+     * @param {string} source
+     * @returns {string}
+     */
+    function minifyJs(source) {
+      if (!String(source).trim()) return '';
+      const tokens = tokenizeJs(source);
+      /** @type {string[]} */
+      const lines = [''];
+      /** @type {{type:string,value:string}|null} */
+      let previous = null;
+      tokens.forEach(function (token) {
+        if (token.type === 'comment' || token.type === 'space') return;
+        if (token.type === 'newline') {
+          lines.push('');
+          previous = token;
+          return;
+        }
+        const line = lines[lines.length - 1];
+        if (line && previous && previous.type !== 'newline' && needsSpace(previous, token) && /[A-Za-z0-9_$]$/.test(line) && /^[A-Za-z0-9_$]/.test(token.value)) {
+          lines[lines.length - 1] += ' ';
+        } else if (line && previous && (previous.type === 'word' || previous.type === 'number') && (token.type === 'word' || token.type === 'number')) {
+          lines[lines.length - 1] += ' ';
+        }
+        lines[lines.length - 1] += token.value;
+        previous = token;
+      });
+      const compact = lines.map(function (line) { return line.trim(); }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+      return compact ? compact + '\n' : '';
+    }
+
+    /**
+     * Pretty-print CSS, including nested at-rules.
+     * @param {string} source
+     * @returns {string}
+     */
+    function formatCss(source) {
+      const text = String(source).replace(/\r\n/g, '\n').trim();
+      if (!text) return '';
+      let out = '';
+      let indent = 0;
+      let buffer = '';
+      let quote = '';
+      let index = 0;
+      while (index < text.length) {
+        const char = text[index];
+        if (quote) {
+          buffer += char;
+          if (char === '\\' && text[index + 1]) {
+            buffer += text[index + 1];
+            index += 2;
+            continue;
+          }
+          if (char === quote) quote = '';
+          index += 1;
+          continue;
+        }
+        if (char === '"' || char === "'") {
+          quote = char;
+          buffer += char;
+          index += 1;
+          continue;
+        }
+        if (char === '/' && text[index + 1] === '*') {
+          const end = text.indexOf('*/', index + 2);
+          const comment = text.slice(index, end === -1 ? text.length : end + 2);
+          if (buffer.trim()) {
+            out += '  '.repeat(indent) + buffer.trim() + '\n';
+            buffer = '';
+          }
+          out += '  '.repeat(indent) + comment + '\n';
+          index += comment.length;
+          continue;
+        }
+        if (char === '{') {
+          out += '  '.repeat(indent) + buffer.trim() + ' {\n';
+          buffer = '';
+          indent += 1;
+          index += 1;
+          continue;
+        }
+        if (char === '}') {
+          if (buffer.trim()) out += '  '.repeat(indent) + buffer.trim().replace(/;$/, '') + ';\n';
+          buffer = '';
+          indent = Math.max(0, indent - 1);
+          out += '  '.repeat(indent) + '}\n\n';
+          index += 1;
+          continue;
+        }
+        if (char === ';') {
+          if (buffer.trim()) out += '  '.repeat(indent) + buffer.trim() + ';\n';
+          buffer = '';
+          index += 1;
+          continue;
+        }
+        buffer += char === '\n' ? ' ' : char;
+        index += 1;
+      }
+      if (buffer.trim()) out += '  '.repeat(indent) + buffer.trim() + '\n';
+      return out.replace(/\n{3,}/g, '\n\n').trim() + '\n';
+    }
+
+    /**
+     * Collapse CSS while preserving quoted strings.
+     * @param {string} source
+     * @returns {string}
+     */
+    function minifyCss(source) {
+      if (!String(source).trim()) return '';
+      /** @type {string[]} */
+      const vault = [];
+      let text = String(source).replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, function (match) {
+        const token = '___STR' + vault.length + '___';
+        vault.push(match);
+        return token;
+      });
+      text = text.replace(/\/\*[\s\S]*?\*\//g, '');
+      text = text.replace(/\s+/g, ' ').trim();
+      text = text.replace(/\s*([{}:;,])\s*/g, '$1').replace(/;}/g, '}');
+      vault.forEach(function (value, index) {
+        text = text.replace('___STR' + index + '___', value);
+      });
+      return text.trim();
+    }
+
+    /**
+     * Pretty-print HTML-like markup. Script, style and pre blocks stay intact.
+     * @param {string} source
+     * @returns {string}
+     */
+    function formatHtml(source) {
+      const raw = String(source).replace(/\r\n/g, '\n').trim();
+      if (!raw) return '';
+      const voids = { area: 1, base: 1, br: 1, col: 1, embed: 1, hr: 1, img: 1, input: 1, link: 1, meta: 1, param: 1, source: 1, track: 1, wbr: 1 };
+      const pattern = /<(script|style|pre)\b[^>]*>[\s\S]*?<\/\1>|<!--[\s\S]*?-->|<\/?[A-Za-z!][^>]*>|[^<]+/gi;
+      /** @type {string[]} */
+      const tokens = [];
+      let match;
+      while ((match = pattern.exec(raw))) tokens.push(match[0]);
+      let indent = 0;
+      /** @type {string[]} */
+      const lines = [];
+      tokens.forEach(function (token) {
+        const text = token.trim();
+        if (!text) return;
+        if (/^<(script|style|pre)\b/i.test(text) && /<\/(script|style|pre)>\s*$/i.test(text)) {
+          lines.push('  '.repeat(indent) + text);
+          return;
+        }
+        if (text.startsWith('<!--')) {
+          lines.push('  '.repeat(indent) + text);
+          return;
+        }
+        if (text.startsWith('</')) {
+          indent = Math.max(0, indent - 1);
+          lines.push('  '.repeat(indent) + text);
+          return;
+        }
+        if (text.startsWith('<')) {
+          const name = ((/^<([A-Za-z0-9:-]+)/.exec(text) || [])[1] || '').toLowerCase();
+          const selfClosing = /\/>$/.test(text) || voids[name] || text.startsWith('<!');
+          lines.push('  '.repeat(indent) + text);
+          if (!selfClosing) indent += 1;
+          return;
+        }
+        lines.push('  '.repeat(indent) + text);
+      });
+      return lines.join('\n').trim() + '\n';
+    }
+
+    /**
+     * Minify HTML outside protected blocks.
+     * @param {string} source
+     * @returns {string}
+     */
+    function minifyHtml(source) {
+      if (!String(source).trim()) return '';
+      /** @type {string[]} */
+      const blocks = [];
+      let text = String(source).replace(/<!--[\s\S]*?-->/g, '');
+      text = text.replace(/<(script|style|pre)\b[^>]*>[\s\S]*?<\/\1>/gi, function (block) {
+        const token = '\u0000B' + blocks.length + '\u0000';
+        blocks.push(block.trim());
+        return token;
+      });
+      text = text.replace(/>\s+</g, '><').replace(/\s{2,}/g, ' ').trim();
+      blocks.forEach(function (block, index) {
+        text = text.replace('\u0000B' + index + '\u0000', block);
+      });
+      return text;
+    }
+
+    /**
+     * Pretty-print JSON. Throws when the text is not JSON.
+     * @param {string} source
+     * @returns {string}
+     */
+    function formatJson(source) {
+      if (!String(source).trim()) return '';
+      return JSON.stringify(JSON.parse(source), null, 2) + '\n';
+    }
+
+    /**
+     * Minify JSON. Throws when the text is not JSON.
+     * @param {string} source
+     * @returns {string}
+     */
+    function minifyJson(source) {
+      if (!String(source).trim()) return '';
+      return JSON.stringify(JSON.parse(source));
+    }
+
+    /**
+     * Normalize markdown spacing.
+     * @param {string} source
+     * @returns {string}
+     */
+    function formatMarkdown(source) {
+      const lines = String(source).replace(/\r\n/g, '\n').replace(/[ \t]+$/gm, '').split('\n');
+      /** @type {string[]} */
+      const out = [];
+      lines.forEach(function (line) {
+        if (/^#{1,6}\s+/.test(line) && out.length && out[out.length - 1] !== '') out.push('');
+        out.push(line);
+      });
+      const text = out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+      return text ? text + '\n' : '';
+    }
+
+    /**
+     * @param {string} source
+     * @returns {string}
+     */
+    function minifyMarkdown(source) {
+      const text = String(source).replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n').trim();
+      return text ? text + '\n' : '';
+    }
+
+    /**
+     * Format one tab.
+     * @param {string} tab
+     * @param {string} source
+     * @returns {string}
+     */
+    function formatCode(tab, source) {
+      if (tab === 'html') return formatHtml(source);
+      if (tab === 'css') return formatCss(source);
+      if (tab === 'js') return formatJs(source);
+      if (tab === 'json') return formatJson(source);
+      if (tab === 'svg' || tab === 'xml') return formatHtml(source);
+      if (tab === 'md') return formatMarkdown(source);
+      return source;
+    }
+
+    /**
+     * Minify one tab.
+     * @param {string} tab
+     * @param {string} source
+     * @returns {string}
+     */
+    function minifyCode(tab, source) {
+      if (tab === 'html') return minifyHtml(source);
+      if (tab === 'css') return minifyCss(source);
+      if (tab === 'js') return minifyJs(source);
+      if (tab === 'json') return minifyJson(source);
+      if (tab === 'svg' || tab === 'xml') return minifyHtml(source);
+      if (tab === 'md') return minifyMarkdown(source);
+      return source;
+    }
+
+    /* ----------------------------------------------------------
+     * 8. Preview document
+     * ---------------------------------------------------------- */
+
+    /**
+     * Reduce a full HTML document to a body fragment for the preview.
+     * @param {string} html
+     * @returns {string}
+     */
+    function fragmentForPreview(html) {
+      let fragment = String(html || '');
+      const body = fragment.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
+      if (body) fragment = body[1];
+      fragment = fragment.replace(/<\/?(?:html|head|body)\b[^>]*>/gi, '');
+      fragment = fragment.replace(/<!DOCTYPE[^>]*>/gi, '');
+      return neutralizeDocumentClosers(fragment);
+    }
+
+    /**
+     * Pretty JSON inside an escaped pre, or the raw text when parsing fails.
+     * @param {string} source
+     * @returns {string}
+     */
+    function jsonPreviewBlock(source) {
+      if (!String(source).trim()) return '';
+      let pretty = source;
+      try {
+        pretty = JSON.stringify(JSON.parse(source), null, 2);
+      } catch (err) {
+        pretty = source;
+      }
+      return '<pre class="sandbox-json">' + escapeHtml(pretty) + '</pre>';
+    }
+
+    /**
+     * Console bootstrap for one preview run.
+     * @param {number} runId
+     * @param {boolean} withDock
+     * @returns {string}
+     */
+    function buildBoot(runId, withDock) {
+      return 'var RUN=' + Number(runId) + ';\nvar DOCK=' + (withDock ? 'true' : 'false') + ';\n' + BOOT_BODY + '\n';
+    }
+
+    /**
+     * Assemble the sandbox document. JSON is escaped. User JS is wrapped in try/catch.
+     * @param {Record<string, string>} current
+     * @param {{withDock?:boolean, runId?:number}} options
+     * @returns {string}
+     */
+    function assembleDocument(current, options) {
+      const withDock = !!(options && options.withDock);
+      const runId = options && options.runId ? options.runId : 0;
+      const chunks = [];
+      if (String(current.html || '').trim()) chunks.push(fragmentForPreview(current.html));
+      if (String(current.svg || '').trim()) chunks.push(neutralizeDocumentClosers(current.svg));
+      if (String(current.xml || '').trim()) chunks.push(neutralizeDocumentClosers(current.xml));
+      const markdown = markdownToHtml(current.md || '');
+      if (markdown) chunks.push('<article class="sandbox-md">\n' + markdown + '\n</article>');
+      const jsonBlock = jsonPreviewBlock(current.json || '');
+      if (jsonBlock) chunks.push(jsonBlock);
+      const openScript = '<scr' + 'ipt>';
+      const closeScript = '</scr' + 'ipt>';
+      // Compile inside the iframe only. A syntax error then stays a caught exception
+      // and cannot close the try block or touch the parent page.
+      const userScript = [
+        'try {',
+        '  var runUserCode = new Function(' + jsStringLiteral(String(current.js || '') + '\n//# sourceURL=sandbox.js') + ');',
+        '  runUserCode();',
+        '} catch (err) {',
+        '  console.error(err && err.stack ? err.stack : String(err));',
+        '}'
+      ].join('\n');
+      return '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="utf-8">\n<style>\n' +
+        safeStyle(BASE_CSS + '\n' + (current.css || '')) +
+        '\n</style>\n' + openScript + '\n' + buildBoot(runId, withDock) + closeScript +
+        '\n</head>\n<body>\n' + chunks.join('\n') + '\n' + openScript + '\n' + userScript + closeScript +
+        '\n</body>\n</html>';
+    }
+
+    /**
+     * Combined clipboard text for all seven tabs.
+     * @param {Record<string, string>} current
+     * @returns {string}
+     */
+    function buildCombined(current) {
+      return [
+        '<!-- HTML -->\n' + current.html,
+        '<style>\n/* CSS */\n' + current.css + '\n</style>',
+        '<scr' + 'ipt>\n/* JS */\n' + current.js + '\n</scr' + 'ipt>',
+        '<!-- JSON -->\n' + current.json,
+        '<!-- SVG -->\n' + current.svg,
+        '<!-- XML -->\n' + current.xml,
+        '<!-- Markdown -->\n' + current.md
+      ].join('\n\n');
+    }
+
+    /* ----------------------------------------------------------
+     * 9. Editor view
+     * ---------------------------------------------------------- */
+
+    /**
+     * Highlight source for the active language, or escape it.
+     * @param {string} code
+     * @param {string} tab
+     * @returns {string}
+     */
+    function highlightSource(code, tab) {
+      if (!code) return '';
+      if (byteLength(code) > HIGHLIGHT_LIMIT) return escapeHtml(code);
+      const language = HLJS_LANG[tab] || 'plaintext';
+      try {
+        if (window.hljs && typeof window.hljs.highlight === 'function' && window.hljs.getLanguage(language)) {
+          return window.hljs.highlight(code, { language: language, ignoreIllegals: true }).value;
+        }
+      } catch (err) {
+        return escapeHtml(code);
+      }
+      return escapeHtml(code);
+    }
+
+    /**
+     * Width available for wrapping a logical line.
+     * @returns {number}
+     */
+    function contentWidth() {
+      const style = getComputedStyle(editor);
+      const pad = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+      return Math.max(0, editor.clientWidth - pad);
+    }
+
+    /**
+     * Visual height of one logical line, including wraps.
+     * @param {string} text
+     * @param {number} width
+     * @returns {number}
+     */
+    function lineBoxHeight(text, width) {
+      const style = getComputedStyle(editor);
+      const fallback = parseFloat(style.lineHeight) || 22;
+      if (width < 8) return fallback;
+      measurer.style.width = width + 'px';
+      measurer.style.font = style.font;
+      measurer.style.lineHeight = style.lineHeight;
+      measurer.style.letterSpacing = style.letterSpacing;
+      measurer.textContent = text.length ? text : ' ';
+      const height = measurer.getBoundingClientRect().height;
+      return height > 0 ? height : fallback;
+    }
+
+    /**
+     * Rebuild gutter numbers so wrapped lines stay aligned.
+     * @returns {void}
+     */
+    function renderGutter() {
+      const lines = editor.value.split('\n');
+      const width = contentWidth();
+      const fragment = document.createDocumentFragment();
+      for (let i = 0; i < lines.length; i += 1) {
+        const row = document.createElement('div');
+        row.className = 'ln';
+        row.textContent = String(i + 1);
+        row.style.height = lineBoxHeight(lines[i], width) + 'px';
+        fragment.appendChild(row);
+      }
+      gutter.replaceChildren(fragment);
+    }
+
+    /**
+     * Sync the highlight layer, gutter and textarea height.
+     * @returns {void}
+     */
+    function paintEditorNow() {
+      if (painting) return;
+      painting = true;
+      try {
+        const code = editor.value;
+        const html = highlightSource(code, activeTab);
+        highlightCode.innerHTML = html || '&#8203;';
+        placeholder.hidden = code.length > 0;
+        const nextHeight = Math.max(highlightLayer.offsetHeight, editorBody.clientHeight || 0);
+        if (Math.abs(nextHeight - editor.offsetHeight) > 1) editor.style.height = nextHeight + 'px';
+        renderGutter();
+      } finally {
+        painting = false;
+      }
+    }
+
+    /**
+     * Load highlight.js without blocking the editor if the CDN is slow.
+     * @returns {void}
+     */
+    function loadHighlighter() {
+      if (window.hljs) {
+        paintEditorNow();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';
+      script.onload = function () { paintEditorNow(); };
+      script.onerror = function () { paintEditorNow(); };
+      document.head.appendChild(script);
+    }
+
+    /**
+     * Pull the textarea into state and return a copy.
+     * @returns {{html:string,css:string,js:string,json:string,svg:string,xml:string,md:string}}
+     */
+    function readState() {
+      state[activeTab] = editor.value;
+      return cloneState(state);
+    }
+
+    /**
+     * Refresh badges and the character counter.
+     * @returns {void}
+     */
+    function updateStats() {
+      const current = readState();
+      const shares = languageShares(current);
+      badgeHtml.textContent = 'HTML ' + shares.html + '%';
+      badgeCss.textContent = 'CSS ' + shares.css + '%';
+      badgeJs.textContent = 'JS ' + shares.js + '%';
+      badgeText.textContent = 'Текст ' + shares.text + '%';
+      segHtml.style.width = shares.html + '%';
+      segCss.style.width = shares.css + '%';
+      segJs.style.width = shares.js + '%';
+      segText.style.width = shares.text + '%';
+      const here = current[activeTab].length;
+      const total = TABS.reduce(function (sum, key) { return sum + current[key].length; }, 0);
+      charCount.textContent = formatCount(here) + ' в этой вкладке · ' + formatCount(total) + ' всего';
+    }
+
+    /**
+     * Move the visible tab selection.
+     * @returns {void}
+     */
+    function updateTabUI() {
+      TABS.forEach(function (key) {
+        const button = document.getElementById('tab-' + key);
+        const selected = key === activeTab;
+        button.setAttribute('aria-selected', selected ? 'true' : 'false');
+        button.tabIndex = selected ? 0 : -1;
+      });
+    }
+
+    /**
+     * Show another language in the same textarea.
+     * @param {string} next
+     * @param {{force?:boolean, focus?:boolean}} [options]
+     * @returns {void}
+     */
+    function switchTab(next, options) {
+      if (TABS.indexOf(next) === -1) return;
+      const force = options && options.force;
+      if (!force && next === activeTab) {
+        if (options && options.focus) editor.focus();
+        return;
+      }
+      if (!force) state[activeTab] = editor.value;
+      scrollMemory[activeTab] = editorBody.scrollTop;
+      activeTab = next;
+      editor.value = state[activeTab] || '';
+      editor.setAttribute('aria-label', 'Редактор: ' + TAB_LABELS[next]);
+      editorShell.setAttribute('aria-labelledby', 'tab-' + next);
+      placeholder.textContent = PLACEHOLDERS[next];
+      updateTabUI();
+      paintEditorNow();
+      updateStats();
+      editorBody.scrollTop = scrollMemory[next] || 0;
+      if (options && options.focus) editor.focus();
+    }
+
+    /**
+     * Replace every tab and choose which one is visible.
+     * @param {Record<string, string>} next
+     * @param {string} tab
+     * @param {{dirty?:boolean, status?:string}} [options]
+     * @returns {void}
+     */
+    function applyFullState(next, tab, options) {
+      const clean = clampState(cloneState(next));
+      TABS.forEach(function (key) {
+        state[key] = clean[key];
+        scrollMemory[key] = 0;
+      });
+      activeTab = TABS.indexOf(tab) === -1 ? 'html' : tab;
+      dirty = !!(options && options.dirty);
+      editor.value = state[activeTab];
+      editor.setAttribute('aria-label', 'Редактор: ' + TAB_LABELS[activeTab]);
+      editorShell.setAttribute('aria-labelledby', 'tab-' + activeTab);
+      placeholder.textContent = PLACEHOLDERS[activeTab];
+      updateTabUI();
+      paintEditorNow();
+      updateStats();
+      editorBody.scrollTop = 0;
+      if (options && options.status) setStatus(options.status);
+    }
+
+    /**
+     * Schedule preview and draft after an edit.
+     * @param {string} [status]
+     * @returns {void}
+     */
+    function afterEdit(status) {
+      dirty = true;
+      updateStats();
+      schedulePreview();
+      scheduleDraft();
+      setStatus(status || 'Ожидание автозапуска…');
+    }
+
+    /**
+     * Insert text at the caret if it fits the size limit.
+     * @param {string} text
+     * @returns {boolean}
+     */
+    function insertAtCursor(text) {
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      const next = editor.value.slice(0, start) + text + editor.value.slice(end);
+      if (byteLength(next) > LIMIT) {
+        toast('Превышен лимит 100 КБ для этой вкладки');
+        return false;
+      }
+      editor.value = next;
+      const caret = start + text.length;
+      editor.selectionStart = editor.selectionEnd = caret;
+      state[activeTab] = next;
+      paintEditorNow();
+      return true;
+    }
+
+    /**
+     * Append text to a tab, creating a blank line before it when needed.
+     * @param {string} tab
+     * @param {string} chunk
+     * @returns {boolean}
+     */
+    function appendToTab(tab, chunk) {
+      const base = tab === activeTab ? editor.value : (state[tab] || '');
+      const next = base.trim() ? base.replace(/\s*$/, '\n\n') + chunk : chunk;
+      if (byteLength(next) > LIMIT) {
+        toast('Превышен лимит 100 КБ для этой вкладки');
+        return false;
+      }
+      state[tab] = next;
+      if (tab === activeTab) {
+        editor.value = next;
+        paintEditorNow();
+      }
+      return true;
+    }
+
+    /**
+     * Indent the caret or every selected line by two spaces.
+     * @returns {void}
+     */
+    function indentSelection() {
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      const value = editor.value;
+      if (start === end) {
+        if (insertAtCursor('  ')) afterEdit();
+        return;
+      }
+      const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+      const selected = value.slice(lineStart, end);
+      const replaced = selected.split('\n').map(function (line) { return '  ' + line; }).join('\n');
+      const next = value.slice(0, lineStart) + replaced + value.slice(end);
+      if (byteLength(next) > LIMIT) {
+        toast('Превышен лимит 100 КБ для этой вкладки');
+        return;
+      }
+      editor.value = next;
+      editor.selectionStart = start + 2;
+      editor.selectionEnd = end + (replaced.length - selected.length);
+      state[activeTab] = next;
+      paintEditorNow();
+      afterEdit();
+    }
+
+    /**
+     * Remove up to two spaces from the current line or the selected lines.
+     * @returns {void}
+     */
+    function outdentSelection() {
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      const value = editor.value;
+      const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+      const lineEnd = end === start ? value.indexOf('\n', start) : end;
+      const sliceEnd = lineEnd === -1 ? value.length : lineEnd;
+      const selected = value.slice(lineStart, sliceEnd);
+      const replaced = selected.split('\n').map(function (line) { return line.replace(/^( {1,2}|\t)/, ''); }).join('\n');
+      editor.value = value.slice(0, lineStart) + replaced + value.slice(sliceEnd);
+      const delta = selected.length - replaced.length;
+      editor.selectionStart = Math.max(lineStart, start - Math.min(2, delta));
+      editor.selectionEnd = Math.max(editor.selectionStart, end - delta);
+      state[activeTab] = editor.value;
+      paintEditorNow();
+      afterEdit();
+    }
+
+    /**
+     * Insert a newline that keeps the current indent, plus two spaces after an opening bracket.
+     * @returns {void}
+     */
+    function insertAutoIndent() {
+      const start = editor.selectionStart;
+      const value = editor.value;
+      const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+      const prefix = value.slice(lineStart, start);
+      const indent = (prefix.match(/^[ \t]*/) || [''])[0];
+      const extra = /[{\(\[]\s*$/.test(prefix) ? '  ' : '';
+      if (insertAtCursor('\n' + indent + extra)) afterEdit();
+    }
+
+    /* ----------------------------------------------------------
+     * 10. Preview, console, fullscreen
+     * ---------------------------------------------------------- */
+
+    /**
+     * @param {Window|null} source
+     * @returns {boolean}
+     */
+    function isSandboxFrame(source) {
+      try {
+        return !!source && (source === preview.contentWindow || source === fsFrame.contentWindow);
+      } catch (err) {
+        return false;
+      }
+    }
+
+    /**
+     * @param {string} value
+     * @returns {string}
+     */
+    function trimText(value) {
+      const text = String(value);
+      return text.length > 2000 ? text.slice(0, 2000) + '…' : text;
+    }
+
+    /**
+     * Empty the parent console.
+     * @returns {void}
+     */
+    function clearConsole() {
+      consoleLog.replaceChildren(consoleEmpty);
+      consoleEmpty.hidden = false;
+    }
+
+    /**
+     * Append one console row.
+     * @param {string} level
+     * @param {string} message
+     * @returns {void}
+     */
+    function appendConsole(level, message) {
+      consoleEmpty.hidden = true;
+      const row = document.createElement('div');
+      row.className = 'console-row level-' + level;
+      const badge = document.createElement('span');
+      badge.className = 'console-level';
+      badge.textContent = LEVELS[level] || level;
+      const msg = document.createElement('span');
+      msg.className = 'console-msg';
+      msg.textContent = message;
+      row.append(badge, msg);
+      consoleLog.appendChild(row);
+      while (consoleLog.querySelectorAll('.console-row').length > 200) {
+        const oldest = consoleLog.querySelector('.console-row');
+        if (oldest) oldest.remove();
+        else break;
+      }
+      consoleLog.scrollTop = consoleLog.scrollHeight;
+    }
+
+    /**
+     * Blank both preview frames.
+     * @returns {void}
+     */
+    function clearPreviewFrame() {
+      const blank = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body></body></html>';
+      try {
+        preview.srcdoc = blank;
+        fsFrame.srcdoc = blank;
+      } catch (err) {
+        setStatus('Ошибка предпросмотра');
+      }
+      currentDoc = '';
+      clearConsole();
+    }
+
+    /**
+     * Rebuild the preview immediately.
+     * @returns {void}
+     */
+    function runPreview() {
+      window.clearTimeout(previewTimer);
+      try {
+        currentRun += 1;
+        currentDoc = assembleDocument(readState(), { withDock: false, runId: currentRun });
+        preview.srcdoc = currentDoc;
+        if (!fsOverlay.hidden) fsFrame.srcdoc = currentDoc;
+        clearConsole();
+        setStatus('Предпросмотр обновлён');
+      } catch (err) {
+        setStatus('Ошибка предпросмотра');
+        toast('Не удалось обновить предпросмотр');
+      }
+    }
+
+    /**
+     * Debounced auto-run.
+     * @returns {void}
+     */
+    function schedulePreview() {
+      window.clearTimeout(previewTimer);
+      previewTimer = window.setTimeout(runPreview, PREVIEW_DELAY);
+    }
+
+    /**
+     * Open the fullscreen preview.
+     * @returns {void}
+     */
+    function openFullscreen() {
+      fsOverlay.hidden = false;
+      document.body.classList.add('lock');
+      runPreview();
+      must('fsClose').focus();
+    }
+
+    /**
+     * Close the fullscreen preview.
+     * @returns {void}
+     */
+    function closeFullscreen() {
+      fsOverlay.hidden = true;
+      document.body.classList.remove('lock');
+      try {
+        fsFrame.srcdoc = '<!DOCTYPE html><html><body></body></html>';
+      } catch (err) {
+        /* The overlay is already closed. */
+      }
+    }
+
+    /* ----------------------------------------------------------
+     * 11. Clipboard, download, share, draft
+     * ---------------------------------------------------------- */
+
+    /**
+     * Copy text with the async clipboard API and an execCommand fallback.
+     * @param {string} text
+     * @param {string} successMessage
+     * @returns {Promise<boolean>}
+     */
+    async function copyText(text, successMessage) {
+      const restore = document.activeElement;
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          await navigator.clipboard.writeText(text);
+          toast(successMessage);
+          return true;
+        }
+      } catch (err) {
+        /* Fall through to the legacy path. */
+      }
+      const area = document.createElement('textarea');
+      try {
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.top = '0';
+        area.style.left = '-9999px';
+        document.body.appendChild(area);
+        area.focus();
+        area.select();
+        area.setSelectionRange(0, area.value.length);
+        const ok = document.execCommand('copy');
+        if (ok) {
+          toast(successMessage);
+          return true;
+        }
+      } catch (err) {
+        toast('Ошибка копирования');
+        return false;
+      } finally {
+        area.remove();
+        if (restore && restore.focus) restore.focus();
+      }
+      toast('Ошибка копирования');
+      return false;
+    }
+
+    /**
+     * Copy every tab in the documented wrapper format.
+     * @returns {Promise<void>}
+     */
+    async function copyAll() {
+      try {
+        await copyText(buildCombined(readState()), 'Код скопирован!');
+      } catch (err) {
+        toast('Ошибка копирования');
+      }
+    }
+
+    /**
+     * Local calendar date for the download name.
+     * @param {Date} date
+     * @returns {string}
+     */
+    function fileStamp(date) {
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return date.getFullYear() + '-' + month + '-' + day;
+    }
+
+    /**
+     * Download the assembled HTML file.
+     * @returns {void}
+     */
+    function downloadFile() {
+      try {
+        const html = assembleDocument(readState(), { withDock: true, runId: 0 });
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.download = 'sandbox-' + fileStamp(new Date()) + '.html';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+        setStatus('Файл скачан');
+      } catch (err) {
+        setStatus('Ошибка скачивания');
+        toast('Не удалось скачать файл');
+      }
+    }
+
+    /**
+     * Hash carrying every tab.
+     * @param {Record<string, string>} current
+     * @returns {string}
+     */
+    function buildHash(current) {
+      const payload = JSON.stringify({
+        html: current.html,
+        css: current.css,
+        js: current.js,
+        json: current.json,
+        svg: current.svg,
+        xml: current.xml,
+        md: current.md
+      });
+      return '#code=' + encodeURIComponent(encodeBase64Utf8(payload));
+    }
+
+    /**
+     * Read #code= from the location. Undefined means the hash is absent.
+     * @returns {string|null|undefined}
+     */
+    function decodeHashPayload() {
+      const hash = location.hash || '';
+      if (hash.indexOf('#code=') !== 0) return undefined;
+      let payload = hash.slice('#code='.length).trim();
+      if (!payload) return null;
+      try { payload = decodeURIComponent(payload); } catch (err) { /* already decoded */ }
+      try {
+        return decodeBase64Utf8(payload);
+      } catch (err) {
+        return null;
+      }
+    }
+
+    /**
+     * Parse a shared JSON state. Returns null when the text is a legacy string.
+     * @param {string} decoded
+     * @returns {Record<string, string>|null}
+     */
+    function tryParseState(decoded) {
+      try {
+        const data = JSON.parse(decoded);
+        if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+        const found = TABS.some(function (key) { return typeof data[key] === 'string'; });
+        if (!found) return null;
+        return cloneState(data);
+      } catch (err) {
+        return null;
+      }
+    }
+
+    /**
+     * Resolve a share link, accepting the old single-string format.
+     * @returns {{state:Record<string,string>, tab:string, legacy:boolean}|null|undefined}
+     */
+    function readSharedState() {
+      const decoded = decodeHashPayload();
+      if (decoded === undefined) return undefined;
+      if (decoded === null) return null;
+      const parsed = tryParseState(decoded);
+      if (parsed) return { state: parsed, tab: firstFilled(parsed), legacy: false };
+      const loose = importLooseCode(decoded);
+      return { state: loose, tab: firstFilled(loose), legacy: true };
+    }
+
+    /**
+     * Put the share URL in the address bar and on the clipboard.
+     * @returns {Promise<void>}
+     */
+    async function share() {
+      try {
+        const current = readState();
+        const hash = buildHash(current);
+        history.replaceState(null, '', hash);
+        const url = location.origin + location.pathname + location.search + hash;
+        const copied = await copyText(url, 'Ссылка скопирована!');
+        if (!copied) {
+          shareFallback.hidden = false;
+          shareFallback.value = url;
+          shareFallback.focus();
+          shareFallback.select();
+        } else shareFallback.hidden = true;
+        if (byteLength(hash) > 50000) toast('Ссылка получилась очень длинной');
+        setStatus('Ссылка готова');
+      } catch (err) {
+        toast('Ошибка копирования');
+      }
+    }
+
+    /**
+     * Persist the draft immediately.
+     * @returns {boolean}
+     */
+    function saveDraftNow() {
+      try {
+        const payload = {
+          version: 1,
+          savedAt: new Date().toISOString(),
+          activeTab: activeTab,
+          state: readState()
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+
+    /**
+     * Debounced autosave. Does nothing until the user changes something.
+     * @returns {void}
+     */
+    function scheduleDraft() {
+      if (!dirty) return;
+      window.clearTimeout(draftTimer);
+      draftTimer = window.setTimeout(function () {
+        if (saveDraftNow()) setDraftLabel('Черновик сохранён');
+        else setDraftLabel('Ошибка сохранения черновика');
+      }, DRAFT_DELAY);
+    }
+
+    /**
+     * Read the stored draft, or null when it is missing or unreadable.
+     * @returns {{state:Record<string,string>, activeTab:string}|null}
+     */
+    function readDraft() {
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (!data || typeof data !== 'object' || !data.state || typeof data.state !== 'object') return null;
+        return {
+          state: cloneState(data.state),
+          activeTab: TABS.indexOf(data.activeTab) === -1 ? 'html' : data.activeTab
+        };
+      } catch (err) {
+        return null;
+      }
+    }
+
+    /* ----------------------------------------------------------
+     * 12. Commands
+     * ---------------------------------------------------------- */
+
+    /**
+     * Ask a yes/no question with the themed dialog.
+     * @param {string} title
+     * @param {string} text
+     * @param {string} okLabel
+     * @param {string} cancelLabel
+     * @returns {Promise<boolean>}
+     */
+    function askModal(title, text, okLabel, cancelLabel) {
+      return new Promise(function (resolve) {
+        modalReturn = /** @type {HTMLElement|null} */ (document.activeElement);
+        modalResolver = resolve;
+        modalTitle.textContent = title;
+        modalText.textContent = text;
+        modalOk.textContent = okLabel;
+        modalCancel.textContent = cancelLabel;
+        modal.hidden = false;
+        modalOk.focus();
+      });
+    }
+
+    /**
+     * Close the dialog and resolve its promise.
+     * @param {boolean} result
+     * @returns {void}
+     */
+    function closeModal(result) {
+      if (modal.hidden) return;
+      modal.hidden = true;
+      const resolve = modalResolver;
+      modalResolver = null;
+      if (modalReturn && modalReturn.focus) modalReturn.focus();
+      modalReturn = null;
+      if (resolve) resolve(result);
+    }
+
+    /**
+     * Apply a confirmed paste classification.
+     * @param {string} text
+     * @param {{mode:string, extracted?:{html:string,css:string,js:string}}} decision
+     * @returns {void}
+     */
+    function applyPasteDecision(text, decision) {
+      if (decision.mode === 'extract' && decision.extracted) {
+        const part = decision.extracted;
+        if (part.html && !insertAtCursor(part.html)) return;
+        if (part.css && !appendToTab('css', part.css)) return;
+        if (part.js && !appendToTab('js', part.js)) return;
+        afterEdit('Код разложен по вкладкам');
+        toast('Код разложен по вкладкам');
+        return;
+      }
+      if (TABS.indexOf(decision.mode) === -1) {
+        if (insertAtCursor(text)) afterEdit();
+        return;
+      }
+      if (!appendToTab(decision.mode, text.trim())) return;
+      switchTab(decision.mode);
+      afterEdit('Фрагмент перенесён');
+      toast('Фрагмент перенесён на вкладку ' + TAB_LABELS[decision.mode]);
+    }
+
+    /**
+     * Offer to split a mixed paste, or insert it unchanged.
+     * @param {string} text
+     * @param {{mode:string, extracted?:{html:string,css:string,js:string}}} decision
+     * @returns {Promise<void>}
+     */
+    async function openPasteDialog(text, decision) {
+      const copy = PASTE_COPY[decision.mode] || PASTE_COPY.extract;
+      const yes = await askModal(copy.title, copy.text, copy.ok, copy.cancel);
+      if (yes) applyPasteDecision(text, decision);
+      else if (insertAtCursor(text)) afterEdit();
+    }
+
+    /**
+     * Replace the sandbox with an example and refresh the preview.
+     * @param {string} name
+     * @returns {void}
+     */
+    function loadExample(name) {
+      const example = EXAMPLES[name];
+      if (!example) return;
+      applyFullState(example.files, example.tab, { dirty: true, status: 'Пример загружен' });
+      closeExamples();
+      scheduleDraft();
+      runPreview();
+      toast('Пример загружен');
+    }
+
+    /**
+     * Format the active tab.
+     * @returns {void}
+     */
+    function formatActive() {
+      try {
+        const next = formatCode(activeTab, editor.value);
+        if (byteLength(next) > LIMIT) {
+          toast('Превышен лимит 100 КБ для этой вкладки');
+          return;
+        }
+        editor.value = next;
+        state[activeTab] = next;
+        paintEditorNow();
+        afterEdit('Отформатировано');
+      } catch (err) {
+        toast('Не удалось отформатировать');
+      }
+    }
+
+    /**
+     * Minify the active tab.
+     * @returns {void}
+     */
+    function minifyActive() {
+      try {
+        const next = minifyCode(activeTab, editor.value);
+        editor.value = next;
+        state[activeTab] = next;
+        paintEditorNow();
+        afterEdit('Сжато');
+      } catch (err) {
+        toast('Не удалось сжать');
+      }
+    }
+
+    /**
+     * Reset every tab after confirmation.
+     * @returns {void}
+     */
+    function clearAll() {
+      if (!window.confirm('Вы уверены?')) return;
+      TABS.forEach(function (key) {
+        state[key] = '';
+        scrollMemory[key] = 0;
+      });
+      activeTab = 'html';
+      dirty = true;
+      editor.value = '';
+      updateTabUI();
+      paintEditorNow();
+      clearPreviewFrame();
+      updateStats();
+      if (saveDraftNow()) setDraftLabel('Черновик сохранён');
+      try {
+        history.replaceState(null, '', location.pathname + location.search);
+      } catch (err) {
+        /* Keeping the hash is harmless. */
+      }
+      shareFallback.hidden = true;
+      setStatus('Код очищен');
+    }
+
+    /**
+     * Drop the stored draft and return to the welcome example.
+     * @returns {void}
+     */
+    function resetDraft() {
+      if (!window.confirm('Сбросить сохранённый черновик?')) return;
+      try { localStorage.removeItem(DRAFT_KEY); } catch (err) { /* storage may be blocked */ }
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (err) { /* ignore */ }
+      dirty = false;
+      window.clearTimeout(draftTimer);
+      applyFullState(EXAMPLES.hello.files, 'html', { dirty: false, status: 'Черновик сброшен' });
+      setDraftLabel('Черновик не сохранён');
+      shareFallback.hidden = true;
+      runPreview();
+    }
+
+    /**
+     * Close the examples menu.
+     * @returns {void}
+     */
+    function closeExamples() {
+      examplesMenu.classList.remove('open');
+      examplesBtn.setAttribute('aria-expanded', 'false');
+    }
+
+    /* ----------------------------------------------------------
+     * 13. Events
+     * ---------------------------------------------------------- */
+
+    /**
+     * Global shortcuts. Tab is captured so it indents instead of leaving the editor.
+     * @param {KeyboardEvent} event
+     * @returns {void}
+     */
+    function onHotkey(event) {
+      const key = event.key;
+      const mod = event.ctrlKey || event.metaKey;
+      if (!modal.hidden) {
+        if (key === 'Escape') {
+          event.preventDefault();
+          closeModal(false);
+        }
+        return;
+      }
+      if (key === 'Escape') {
+        if (examplesMenu.classList.contains('open')) {
+          event.preventDefault();
+          closeExamples();
+          return;
+        }
+        if (!fsOverlay.hidden) {
+          event.preventDefault();
+          closeFullscreen();
+        }
+        return;
+      }
+      if (mod && event.shiftKey && key.toLowerCase() === 'c') {
+        event.preventDefault();
+        copyAll();
+        return;
+      }
+      if (mod && !event.shiftKey && !event.altKey && key.toLowerCase() === 's') {
+        event.preventDefault();
+        downloadFile();
+        return;
+      }
+      if (mod && key === 'Enter') {
+        event.preventDefault();
+        runPreview();
+        return;
+      }
+      if (key === 'Tab' && document.activeElement === editor) {
+        event.preventDefault();
+        if (event.shiftKey) outdentSelection();
+        else indentSelection();
+      }
+    }
+
+    /**
+     * Wire the interface once.
+     * @returns {void}
+     */
+    function bindEvents() {
+      document.addEventListener('keydown', onHotkey, true);
+      editor.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter' || event.ctrlKey || event.metaKey || event.altKey) return;
+        event.preventDefault();
+        insertAutoIndent();
+      });
+      editor.addEventListener('input', function () {
+        if (byteLength(editor.value) > LIMIT) {
+          const caret = editor.selectionStart;
+          editor.value = state[activeTab] || '';
+          const pos = Math.min(caret, editor.value.length);
+          editor.selectionStart = editor.selectionEnd = pos;
+          paintEditorNow();
+          toast('Превышен лимит 100 КБ для этой вкладки');
+          return;
+        }
+        state[activeTab] = editor.value;
+        paintEditorNow();
+        afterEdit();
+      });
+      editor.addEventListener('paste', function (event) {
+        let text = '';
+        try {
+          text = event.clipboardData ? event.clipboardData.getData('text/plain') : '';
+        } catch (err) {
+          text = '';
+        }
+        if (!text) return;
+        if (activeTab === 'html') {
+          const decision = analyzePaste(text);
+          if (decision.mode !== 'insert') {
+            event.preventDefault();
+            if (pasteBusy) return;
+            pasteBusy = true;
+            openPasteDialog(text, decision).finally(function () { pasteBusy = false; });
+            return;
+          }
+        }
+        if (!event.isTrusted) {
+          event.preventDefault();
+          if (insertAtCursor(text)) afterEdit();
+        }
+      });
+      editor.addEventListener('scroll', function () {
+        gutter.scrollTop = editor.scrollTop;
+      });
+      editorBody.addEventListener('scroll', function () {
+        gutter.scrollTop = editorBody.scrollTop;
+      });
+      must('tabs').addEventListener('click', function (event) {
+        const button = event.target.closest('[data-tab]');
+        if (!button) return;
+        switchTab(button.getAttribute('data-tab') || 'html', { focus: true });
+      });
+      must('tabs').addEventListener('keydown', function (event) {
+        if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+        event.preventDefault();
+        const index = TABS.indexOf(activeTab);
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        const next = TABS[(index + direction + TABS.length) % TABS.length];
+        switchTab(next, { focus: false });
+        const tab = document.getElementById('tab-' + next);
+        if (tab) tab.focus();
+      });
+      must('btnRun').addEventListener('click', runPreview);
+      must('btnRefresh').addEventListener('click', runPreview);
+      must('btnCopy').addEventListener('click', function () { copyAll(); });
+      must('btnClear').addEventListener('click', clearAll);
+      must('btnDownload').addEventListener('click', downloadFile);
+      must('btnFormat').addEventListener('click', formatActive);
+      must('btnMinify').addEventListener('click', minifyActive);
+      must('btnFull').addEventListener('click', openFullscreen);
+      must('btnShare').addEventListener('click', function () { share(); });
+      must('btnReset').addEventListener('click', resetDraft);
+      must('fsRun').addEventListener('click', runPreview);
+      must('fsClose').addEventListener('click', closeFullscreen);
+      examplesBtn.addEventListener('click', function () {
+        const open = examplesMenu.classList.toggle('open');
+        examplesBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      examplesMenu.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-example]');
+        if (!button) return;
+        loadExample(button.getAttribute('data-example') || '');
+      });
+      document.addEventListener('click', function (event) {
+        if (!examplesMenu.classList.contains('open')) return;
+        const target = /** @type {Element} */ (event.target);
+        if (target.closest && (target.closest('#examplesMenu') || target.closest('#examplesBtn'))) return;
+        closeExamples();
+      });
+      modalOk.addEventListener('click', function () { closeModal(true); });
+      modalCancel.addEventListener('click', function () { closeModal(false); });
+      modal.addEventListener('click', function (event) {
+        if (event.target === modal) closeModal(false);
+      });
+      window.addEventListener('message', function (event) {
+        try {
+          const data = event.data;
+          if (!data || data.source !== 'code-sandbox-console') return;
+          if (data.runId !== currentRun) return;
+          if (!isSandboxFrame(/** @type {Window|null} */ (event.source))) return;
+          const level = String(data.level || 'log');
+          const args = Array.isArray(data.args) ? data.args.slice(0, 12).map(trimText) : [];
+          appendConsole(level, args.join(' '));
+        } catch (err) {
+          /* Ignore unexpected message shapes. */
+        }
+      });
+      window.addEventListener('resize', paintEditorNow);
+      if (window.ResizeObserver) {
+        const observer = new ResizeObserver(function () {
+          if (!painting) paintEditorNow();
+        });
+        observer.observe(editorBody);
+      }
+      window.addEventListener('beforeunload', function () {
+        if (dirty) saveDraftNow();
+      });
+      window.addEventListener('hashchange', function () {
+        const shared = readSharedState();
+        if (!shared) {
+          if (shared === null) toast('Не удалось прочитать ссылку');
+          return;
+        }
+        applyFullState(shared.state, shared.tab, {
+          dirty: true,
+          status: shared.legacy ? 'Загружен код из ссылки' : 'Загружено из ссылки'
+        });
+        setDraftLabel('Черновик не сохранён');
+        scheduleDraft();
+        runPreview();
+      });
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function () { paintEditorNow(); }).catch(function () {});
+      }
+    }
+
+    /**
+     * Restore a share link, otherwise a draft, otherwise the welcome example.
+     * @returns {void}
+     */
+    function init() {
+      bindEvents();
+      loadHighlighter();
+      const shared = readSharedState();
+      if (shared === null) toast('Не удалось прочитать ссылку');
+      if (shared) {
+        applyFullState(shared.state, shared.tab, {
+          dirty: true,
+          status: shared.legacy ? 'Загружен код из ссылки' : 'Загружено из ссылки'
+        });
+        setDraftLabel('Черновик не сохранён');
+        scheduleDraft();
+        runPreview();
+        return;
+      }
+      const draft = readDraft();
+      if (draft) {
+        applyFullState(draft.state, draft.activeTab, { dirty: true, status: 'Черновик восстановлен' });
+        setDraftLabel('Черновик восстановлен');
+        runPreview();
+        return;
+      }
+      applyFullState(EXAMPLES.hello.files, 'html', { dirty: false, status: 'Готово' });
+      setDraftLabel('Черновик не сохранён');
+      runPreview();
+    }
+
+    try {
+      init();
+    } catch (err) {
+      setStatus('Ошибка интерфейса');
+      throw err;
+    }
+  </script>
+</body>
+</html>
